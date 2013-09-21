@@ -49,6 +49,7 @@ count <- function(veris, field) {
 #'
 #' @param veris a verisr object
 #' @param enum the field to count
+#' @param filter limit what records are searched (optional)
 #' @param add.n include a total count of variables found (denominator)
 #' @param add.freq include a percentage (x/n)
 #' @export
@@ -104,6 +105,8 @@ getenum <- function(veris, enum, filter=NULL, add.n=F, add.freq=F) {
 #' @param veris a verisr object
 #' @param or list of criteria matching "or"
 #' @param and list of criteria matching "and"
+#' @param or.not list of criteria matching "or not"
+#' @param and.not list of criteria matching "and not"
 #' @export
 #' @examples
 #' \dontrun{
@@ -312,9 +315,9 @@ getintenum <- function(veris, enum) {
 #   sapply(int.enum, function(x) { ifelse(value %in% x, TRUE, FALSE)})
 # }
 #   
-# getsimfilter <- function(int.enum, value) {
-#   sapply(int.enum, function(x) { ifelse(value %in% x, TRUE, FALSE)})
-# }  
+getsimfilter <- function(int.enum, value) {
+ sapply(int.enum, function(x) { ifelse(value %in% x, TRUE, FALSE)})
+}  
 
 
 
@@ -323,7 +326,7 @@ getintenum <- function(veris, enum) {
 # dir <- c("~/Documents/github/VCDB/incidents", "~/Documents/json/newfinal/vzint")
 #vcdb <- json2veris(dir)
 
-#' Displays a useful description of a ggplot object
+#' Displays a useful description of a verisr object
 #' 
 #' @param object veris object to summarise
 #' @param ... other arguments ignored (for compatibility with generic)
@@ -331,21 +334,53 @@ getintenum <- function(veris, enum) {
 #' @method summary verisr
 #' @export
 summary.verisr <- function(object, ...) {
-  x <- object
-  cat(paste(length(x), "incidents in this object.\n"))
-  actor <- c("ext"="actor.external", 
-            "int"="actor.internal",
-            "prt"="actor.partner")
-  cat("\n")
-  print(count(x, actor))
-  action <- c("mal"="action.malware",
-              "hak"="action.hacking",
-              "soc"="action.social",
-              "mis"="action.misuse",
-              "err"="action.error",
-              "phy"="action.physical",
-              "env"="action.environmental")
-  cat("\n")
-  print(count(x, action))
+  veris <- object
+  cat(paste(length(veris), "incidents in this object.\n"))
+  actor <- getenum(veris, "actor", add.freq=T)
+  action <- getenum(veris, "action", add.freq=T)
+  asset <- getenum(veris, "asset.assets", add.freq=T)
+  attribute <- getenum(veris, "attribute", add.freq=T)
+  actor.factor <- factor(unlist(apply(actor, 1, function(x) { rep(x[['enum']], x[['x']])})))
+  action.factor <- factor(unlist(apply(action, 1, function(x) { rep(x[['enum']], x[['x']])})))
+  asset.factor <- factor(unlist(apply(asset, 1, function(x) { rep(x[['enum']], x[['x']])})))
+  attr.factor <- factor(unlist(apply(attribute, 1, function(x) { rep(x[['enum']], x[['x']])})))
+  cat("\nActor:\n")
+  print(summary(actor.factor))
+  cat("\nAction:\n")
+  print(summary(actor.factor))
+  cat("\nAsset:\n")
+  print(summary(asset.factor))
+  cat("\nAttribute:\n")
+  print(summary(attr.factor))
 }
 
+#' Displays a four panel barplot of a verisr object
+#' 
+#' @param object veris object to summarise
+#' @param ... other arguments ignored (for compatibility with generic)
+#' @keywords internal
+#' @method plot verisr
+#' @export
+plot.verisr <- function(object, ...) {
+  x <- object
+  actor <- getenum(x, "actor", add.freq=T)
+  action <- getenum(x, "action", add.freq=T)
+  asset <- getenum(x, "asset.assets", add.freq=T)
+  attribute <- getenum(x, "attribute", add.freq=T)
+  # save off paramteres before messing with them
+  savemfrow <- par()$mfrow
+  savelas <- par()$las
+  savemar <- par()$mar
+  # and mess with them 
+  par(las=2) # make label text perpendicular to axis
+  par(mar=c(2.5,5.6,2.1,1.1)) # increase y-axis margin.
+  par(mfrow=c(2,2))
+  # four bar plots
+  barplot(actor$freq*100, names.arg=actor$enum, horiz=T, main="Actor")
+  barplot(action$freq*100, names.arg=action$enum, horiz=T, main="Action")
+  barplot(asset$freq*100, names.arg=asset$enum, horiz=T, main="Asset")
+  barplot(attribute$freq*100, names.arg=attribute$enum, horiz=T, main="Attribute")
+  par(las=savelas)
+  par(mfrow=savemfrow)
+  par(mar=savemar)
+}

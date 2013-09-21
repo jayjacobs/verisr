@@ -32,12 +32,34 @@ summary(vcdb)
 ```
 ## 1737 incidents in this object.
 ## 
-##  ext  int  prt 
-## 1024  556  104 
+## Actor:
+## external internal  partner  unknown 
+##     1024      556      104       86 
 ## 
-## mal hak soc mis err phy env 
-##  49 466  33 225 413 520   1
+## Action:
+## external internal  partner  unknown 
+##     1024      556      104       86 
+## 
+## Asset:
+## Kiosk/Term      Media    Network     Person     Server    Unknown 
+##         18        546         10         37        724         86 
+##   User Dev 
+##        447 
+## 
+## Attribute:
+##  confidentiality     availability  confidentiality        integrity 
+##               61              639             1629              190
 ```
+
+
+And let's look at a high level bar plot of the data:
+
+
+```r
+plot(vcdb)
+```
+
+![plot of chunk unnamed-chunk-4](figure/unnamed-chunk-4.png) 
 
 
 Let's look for a specific variable:
@@ -50,15 +72,15 @@ print(ext.variety)
 
 ```
 ##                enum   x
-## 2        Competitor   1
-## 3          Customer   1
-## 9  State-affiliated   2
+## 1        Competitor   1
+## 2          Customer   1
+## 3  State-affiliated   2
 ## 4     Force majeure   3
-## 6      Nation-state   3
-## 8             Other   9
-## 5   Former employee  11
-## 7   Organized crime  21
-## 1          Activist 134
+## 5      Nation-state   3
+## 6             Other   9
+## 7   Former employee  11
+## 8   Organized crime  21
+## 9          Activist 134
 ## 10     Unaffiliated 220
 ## 11          Unknown 619
 ```
@@ -75,7 +97,7 @@ gg <- gg + coord_flip() + theme_bw()
 print(gg)
 ```
 
-![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5.png) 
+![plot of chunk unnamed-chunk-6](figure/unnamed-chunk-6.png) 
 
 
 In progress: searching by two enumerations:
@@ -111,7 +133,7 @@ gg <- gg + coord_flip() + theme_bw()
 print(gg)
 ```
 
-![plot of chunk unnamed-chunk-7](figure/unnamed-chunk-7.png) 
+![plot of chunk unnamed-chunk-8](figure/unnamed-chunk-8.png) 
 
 
 Or perhaps a heat map with the count in the box:
@@ -127,4 +149,4 @@ gg <- gg + theme(axis.text.x = element_text(angle = 90, hjust = 1), legend.posit
 print(gg)
 ```
 
-![plot of chunk unnamed-chunk-8](figure/unnamed-chunk-8.png) 
+![plot of chunk unnamed-chunk-9](figure/unnamed-chunk-9.png) 

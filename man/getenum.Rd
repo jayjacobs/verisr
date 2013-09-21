@@ -10,6 +10,8 @@
 
   \item{enum}{the field to count}
 
+  \item{filter}{limit what records are searched (optional)}
+
   \item{add.n}{include a total count of variables found
   (denominator)}
 

@@ -24,6 +24,12 @@ Now that we have this, we can get a quick view of what's in the data:
 summary(vcdb)
 ```
 
+And let's look at a high level bar plot of the data:
+
+```{r}
+plot(vcdb)
+```
+
 Let's look for a specific variable:
 
 ```{r}

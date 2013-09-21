@@ -12,7 +12,7 @@ indexes of the veris object so further manipulation can be done.}
 
   \item{enum}{the field to count}
 
-  \item{value}{Displays a useful description of a ggplot
+  \item{value}{Displays a useful description of a verisr
   object}
 
   \item{object}{veris object to summarise}

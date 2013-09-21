@@ -11,6 +11,10 @@
   \item{or}{list of criteria matching "or"}
 
   \item{and}{list of criteria matching "and"}
+
+  \item{or.not}{list of criteria matching "or not"}
+
+  \item{and.not}{list of criteria matching "and not"}
 }
 \description{
   Get a filter given a list of "and" combinations and/or a
