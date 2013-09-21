@@ -4,6 +4,9 @@ verisr
 This package is to support data analysis within the VERIS framework (http://veriscommunity.net).  It is intended to work directly with raw JSON and can be used against the VERIS Community Database (VCDB) found at (http://veriscommunity.net/doku.php?id=public) and (https://github.com/vz-risk/VCDB).
 
 Install it from straight from github:
+```{r echo=FALSE}
+savetime <- proc.time()
+```
 
 ```{r eval=FALSE}
 library("devtools")
@@ -26,7 +29,7 @@ summary(vcdb)
 
 And let's look at a high level bar plot of the data:
 
-```{r}
+```{r "basic-plot"}
 plot(vcdb)
 ```
 
@@ -39,7 +42,7 @@ print(ext.variety)
 
 And we could create a barplot with ggplot:
 
-```{r} 
+```{r "basic-ggplot"} 
 library(ggplot2)
 gg <- ggplot(ext.variety, aes(x=enum, y=x))
 gg <- gg + geom_bar(stat="identity", fill="steelblue")
@@ -57,7 +60,7 @@ head(hacking.actor)
 Now we can create all sorts of views of this data.
 For example a faceted bar plot comparing the two:
 
-```{r fig.height=10}
+```{r "facet-ggplot", fig.height=10}
 gg <- ggplot(hacking.actor, aes(x=enum, y=x))
 gg <- gg + geom_bar(stat="identity", fill="steelblue")
 gg <- gg + facet_wrap( ~ primary, ncol=2)
@@ -68,7 +71,7 @@ print(gg)
 ```
 
 Or perhaps a heat map with the count in the box:
-```{r}
+```{r "basic-heatmap"}
 gg <- ggplot(hacking.actor, aes(x=enum, y=primary, fill=x, label=x))
 gg <- gg + geom_tile() + geom_text()
 gg <- gg + scale_fill_gradient(low = "#D8EEFE", high = "#4682B4")
@@ -78,3 +81,8 @@ gg <- gg + theme_bw()
 gg <- gg + theme(axis.text.x = element_text(angle = 90, hjust = 1),
                  legend.position="none")
 print(gg)
+```
+
+```{r echo=FALSE}
+print(proc.time() - savetime)
+```

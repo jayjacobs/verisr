@@ -6,6 +6,8 @@ This package is to support data analysis within the VERIS framework (http://veri
 Install it from straight from github:
 
 
+
+
 ```r
 library("devtools")
 install_github("verisr", "vz-risk")
@@ -59,7 +61,7 @@ And let's look at a high level bar plot of the data:
 plot(vcdb)
 ```
 
-![plot of chunk unnamed-chunk-4](figure/unnamed-chunk-4.png) 
+![plot of chunk basic-plot](figure/basic-plot.png) 
 
 
 Let's look for a specific variable:
@@ -97,7 +99,7 @@ gg <- gg + coord_flip() + theme_bw()
 print(gg)
 ```
 
-![plot of chunk unnamed-chunk-6](figure/unnamed-chunk-6.png) 
+![plot of chunk basic-ggplot](figure/basic-ggplot.png) 
 
 
 In progress: searching by two enumerations:
@@ -133,7 +135,7 @@ gg <- gg + coord_flip() + theme_bw()
 print(gg)
 ```
 
-![plot of chunk unnamed-chunk-8](figure/unnamed-chunk-8.png) 
+![plot of chunk facet-ggplot](figure/facet-ggplot.png) 
 
 
 Or perhaps a heat map with the count in the box:
@@ -149,4 +151,12 @@ gg <- gg + theme(axis.text.x = element_text(angle = 90, hjust = 1), legend.posit
 print(gg)
 ```
 
-![plot of chunk unnamed-chunk-9](figure/unnamed-chunk-9.png) 
+![plot of chunk basic-heatmap](figure/basic-heatmap.png) 
+
+
+
+```
+##    user  system elapsed 
+##   4.263   0.096   4.392
+```
+
