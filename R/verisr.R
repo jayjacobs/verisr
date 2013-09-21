@@ -15,11 +15,10 @@
 json2veris <- function(dir=".") {
   # create listing of files
   jfiles <- unlist(sapply(dir, list.files, pattern = "json$", full.names=T))
-  jread <- function(jfile) {
-    doc <- fromJSON(file=jfile, method='C')
-  }
   # now read them all
-  veris <- lapply(jfiles, jread)    
+  veris <- lapply(jfiles, function(jfile) {
+    fromJSON(file=jfile, method='C')
+  })    
   # set my class
   class(veris) <- "verisr"
   veris
@@ -44,9 +43,9 @@ count <- function(veris, field) {
   })
 }
 
-#' Get a count of enumerations values
+#' Get a vector of values from an enumeration
 #'
-#' This will collect the values for an enumation and count them up.
+#' This will collect the values for an enumation 
 #'
 #' @param veris a verisr object
 #' @param enum the field to count
@@ -58,22 +57,32 @@ count <- function(veris, field) {
 #' hacking <- getenum(veris, "action.hacking.variety")
 #' external <- getenum(veris, "actor.external.motive")
 #' }
-getenum <- function(veris, enum, add.n=F, add.freq=F) {
+getenum <- function(veris, enum, filter=NULL, add.n=F, add.freq=F) {
   # get the internal list for the enumeration
   int.enum <- getintenum(veris, enum)
+  # and apply the filter, it one was passed in
+  if (!is.null(filter)) {
+    int.enum <- ifelse(filter, int.enum, NA)
+  }
   # count and aggreagte it
   count.enum <- table(unlist(int.enum))
+  if (any(dim(count.enum) == 0)) {
+    warning(paste("No values found for enum \"", enum, "\"", sep=""))
+    return(data.frame())
+  }
   # convert to data.frame
   enum.df <- data.frame(enum=names(count.enum), x=as.vector(count.enum))
   # order it
   enum.df <- enum.df[with(enum.df, order(x)), ]
+  # reset the row names
+  row.names(enum.df) <- 1:nrow(enum.df)
   # make the enum a factor
   enum.df$enum <- factor(enum.df$enum, levels=rev(enum.df$enum), ordered=T)
   if (add.n | add.freq) {
+    # get the count of non-null values
     n <- sum(sapply(int.enum, function(x) {
-      ifelse(length(x)==1,
-             ifelse(is.na(x), 0, 1)
-             ,1) })
+      # it has length and is.na, return 0, else 1
+      ifelse(length(x)==1, ifelse(is.na(x), 0, 1) ,1) })
     )
   }
   if (add.n) {
@@ -84,6 +93,71 @@ getenum <- function(veris, enum, add.n=F, add.freq=F) {
   }
   enum.df
 }
+
+#' This will return a verisr filter object.
+#' 
+#' Get a filter given a list of "and" combinations and/or a list 
+#' of "or" combinations.
+#' Note: industry can be industryN
+#' values can be "$exists" for that field being present
+#' 
+#' @param veris a verisr object
+#' @param or list of criteria matching "or"
+#' @param and list of criteria matching "and"
+#' @export
+#' @examples
+#' \dontrun{
+#' #tbd
+#' hacking <- getenum(veris, "action.hacking.variety")
+#' external <- getenum(veris, "actor.external.motive")
+#' }
+getfilter <- function(veris, and=NULL, or=NULL, or.not=NULL, and.not=NULL) {
+  # this will return a matrix, one row for each
+  # element in the list passed in, with a match
+  # of the value in that list
+  simple.match <- function(either) {
+    sapply(names(either), function(x) {
+      unlist(sapply(getintenum(veris, x), function(y) {
+        if (either[[x]]=="$exists") {
+          match.list <- as.logical(sum(!is.na(y)))
+        } else {
+          # note this means any vector is treated as an "or"
+          match.list <- as.logical(sum(ifelse(either[[x]] %in% y, TRUE, FALSE)))
+        }
+        match.list
+      }))
+    })
+  }
+  retval <- NULL
+  if (!is.null(or)) {
+    or.retval <- as.logical(apply(simple.match(or), 1, sum))
+  } else {
+    or.retval <- rep(T, length(veris))
+  }
+  if (!is.null(and)) {
+    #if all match, include the record
+    and.retval <- ifelse(apply(simple.match(and), 1, sum)==length(and), TRUE, FALSE)
+  } else {
+    and.retval <- rep(T, length(veris))
+  }
+  if (!is.null(and.not)) {
+    # if all match, exclude the record
+    and.not.retval <- ifelse(apply(simple.match(and.not), 1, sum)==length(and.not), FALSE, TRUE)
+  } else {
+    and.not.retval <- rep(T, length(veris))    
+  }
+  if (!is.null(or.not)) {
+    #if any are true, set to false (!) 
+    or.not.retval <- !as.logical(apply(simple.match(or.not), 1, sum))
+  } else {
+    or.not.retval <- rep(T, length(veris))
+  }
+  # defaulting to an AND match between them
+  sendlist <- (or.retval & and.retval & or.not.retval & and.not.retval)
+  class(sendlist) <- "verisr.filter"
+  sendlist
+}  
+
 
 #' Get a count of enumerations values by some other enumeration
 #'
@@ -150,6 +224,11 @@ getindustry <- function(veris, len=2) {
 #' This will iterate through the veris object and return
 #' a list of matches.  This is intented to maintain the orginal
 #' indexes of the veris object so further manipulation can be done.
+#' 
+#' Note: Can do a special "industryN" request and it will chop
+#' off the industry at the N value or return same length of zeros
+#' if it isn't long enough.
+#' 
 #'
 #' @param veris a verisr object
 #' @param enum the field to count
@@ -175,14 +254,46 @@ getintenum <- function(veris, enum) {
   if (is.null(veris[[tag]])) {
     retval <- NA
   } else if (therest == "") {
-    # else if we are at the end of our enum, return the value
-    retval <- veris[[tag]]
+    # else if we are at the end of our enum, return the value?
+    if (length(veris[[tag]])==0) {
+      retval <- NA
+    }
+    # if we have names return those
+    # it's an easy way to count actions, actors, etc.
+    these.names <- names(veris[[tag]])
+#    cat("the rest is blank, names:", these.names, "null:", is.null(these.names), "\n")
+    if (tag=="assets") {
+      assetmap <- c("S"="Server", "N"="Network", "U"="User Dev", "M"="Media", 
+                    "P"="Person", "T"="Kiosk/Term", "Unknown"="Unknown")
+      retval <- sapply(veris[[tag]], function(asset) {
+        myasset <- ifelse(asset$variety=="Unknown", "Unknown", substr(asset$variety, 1, 1))
+        myamount <- ifelse(is.null(asset$amount), 1, asset$amount)
+        rep(assetmap[[myasset]], myamount)
+      })
+    } else if (!is.null(these.names)) {
+      retval <- these.names
+    } else {
+      retval <- veris[[tag]]
+    }
   } else {
     # else we need to continue to "drill down" into the veris object
     # with the rest of the enum being quieried
     # passing it back to self so it can parse through arrays
     # and use the same logic to continue parsing
-    retval <- getintenum(veris[[tag]], therest)
+    #
+    # but before we do, let's check for some unique variables
+    # like "industry*" where * is a length to chop
+    if (grepl("^industry\\d$", therest, perl=T)) {
+      # figure out the length of industry to return
+      ind.len <- substr(therest, 9, 9)
+      retval <- getintenum(veris[[tag]], "industry")
+      retval <- lapply(retval, function(x) {
+        i <- substr(x, 1, ind.len)
+        ifelse(nchar(i)==ind.len, i, paste(rep("0", ind.len), collapse=""))
+      })
+    } else {
+      retval <- getintenum(veris[[tag]], therest)      
+    }
   }
   retval
 }
@@ -195,15 +306,15 @@ getintenum <- function(veris, enum) {
 #' @param veris a verisr object
 #' @param enum the field to count
 #' @param value 
-getfilter <- function(veris, enum, value) {
-  # test if value is regex!
-  int.enum <- getintenum(veris, enum)
-  sapply(int.enum, function(x) { ifelse(value %in% x, TRUE, FALSE)})
-}
-  
-getsimfilter <- function(int.enum, value) {
-  sapply(int.enum, function(x) { ifelse(value %in% x, TRUE, FALSE)})
-}  
+# getfilter <- function(veris, enum, value) {
+#   # test if value is regex!
+#   int.enum <- getintenum(veris, enum)
+#   sapply(int.enum, function(x) { ifelse(value %in% x, TRUE, FALSE)})
+# }
+#   
+# getsimfilter <- function(int.enum, value) {
+#   sapply(int.enum, function(x) { ifelse(value %in% x, TRUE, FALSE)})
+# }  
 
 
 
