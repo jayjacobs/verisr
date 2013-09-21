@@ -39,8 +39,10 @@ summary(vcdb)
 ##     1024      556      104       86 
 ## 
 ## Action:
-## external internal  partner  unknown 
-##     1024      556      104       86 
+## environmental         error       hacking       malware        misuse 
+##             1           413           466            49           225 
+##      physical        social 
+##           520            33 
 ## 
 ## Asset:
 ## Kiosk/Term      Media    Network     Person     Server    Unknown 
@@ -157,6 +159,6 @@ print(gg)
 
 ```
 ##    user  system elapsed 
-##   4.263   0.096   4.392
+##   4.256   0.187   4.796
 ```
 

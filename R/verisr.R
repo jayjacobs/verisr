@@ -347,7 +347,7 @@ summary.verisr <- function(object, ...) {
   cat("\nActor:\n")
   print(summary(actor.factor))
   cat("\nAction:\n")
-  print(summary(actor.factor))
+  print(summary(action.factor))
   cat("\nAsset:\n")
   print(summary(asset.factor))
   cat("\nAttribute:\n")
