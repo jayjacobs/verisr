@@ -70,16 +70,48 @@ gg <- gg + coord_flip() + theme_bw()
 print(gg)
 ```
 
-Or perhaps a heat map with the count in the box:
-```{r "basic-heatmap"}
-gg <- ggplot(hacking.actor, aes(x=enum, y=primary, fill=x, label=x))
-gg <- gg + geom_tile() + geom_text()
+Finally, let's set a filter for only confirmed loss events (data_disclosure="Yes").
+Then get the interaction of the top level actions and assets.
+
+```{r}
+ddfilter <- getfilter(vcdb, and=list("attribute.confidentiality.data_disclosure" = "Yes"))
+action.asset <- getenumby(vcdb, enum="asset.assets", primary="action", filter=ddfilter)
+head(action.asset)
+```
+
+```{r echo=F}
+assetmap <- c("Server", "Network", "User Dev", "Media", 
+              "Person", "Kiosk/Term", "Unknown")
+action.asset$enum <- factor(action.asset$enum, 
+                            levels=rev(assetmap), ordered=T)
+action.asset$primary <- factor(action.asset$primary,
+                               levels=c("malware", "hacking", "social", 
+                                        "misuse", "physical", "error", 
+                                        "environmental"),
+                               ordered=T)
+```
+
+And now make a nice 2 x 2 grid with the data.
+
+```{r  "a2grid", echo=FALSE}
+slim.aa <- action.asset[which(action.asset$x>0), ]
+gg <- ggplot(action.asset, aes(x = primary, y = enum, fill = x, label = x))
+gg <- gg + geom_tile(fill="white", color="gray80")
+gg <- gg + geom_tile(data=slim.aa, color="gray80") + geom_text(data=slim.aa)
 gg <- gg + scale_fill_gradient(low = "#D8EEFE", high = "#4682B4")
-gg <- gg + ylab("External Variety") + xlab("Hacking Vector") 
-gg <- gg + ggtitle("External Actors by Hacking Vector")
+gg <- gg + scale_x_discrete(expand=c(0,0)) + scale_y_discrete(expand=c(0,0))
+gg <- gg + ylab("") + xlab("")
+gg <- gg + ggtitle("A2 Grid: Assets and Actions (confirmed data loss)")
 gg <- gg + theme_bw()
-gg <- gg + theme(axis.text.x = element_text(angle = 90, hjust = 1),
-                 legend.position="none")
+gg <- gg + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5),
+                 axis.text = element_text(size=14),
+                 axis.ticks = element_blank(),
+                 legend.position = "none",
+                 plot.background = element_blank(),
+                 panel.grid.major = element_blank(),
+                 panel.grid.minor = element_blank(),
+                 panel.border = element_rect(colour = "gray30"),
+                 panel.background = element_blank())
 print(gg)
 ```
 

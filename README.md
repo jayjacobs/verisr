@@ -113,13 +113,13 @@ head(hacking.actor)
 ```
 
 ```
-##                enum   x primary
-## 1 3rd party desktop   1 Unknown
-## 2    Backdoor or C2   1 Unknown
-## 3   Desktop sharing   2 Unknown
-## 4             Other   2 Unknown
-## 5           Unknown 130 Unknown
-## 6   Web application  72 Unknown
+##              enum         primary   x
+## 1 Web application         Unknown  72
+## 2 Web application    Unaffiliated  72
+## 3 Web application        Activist 102
+## 4 Web application Organized crime   2
+## 5 Web application Former employee   2
+## 6 Web application           Other   1
 ```
 
 
@@ -140,25 +140,38 @@ print(gg)
 ![plot of chunk facet-ggplot](figure/facet-ggplot.png) 
 
 
-Or perhaps a heat map with the count in the box:
+Finally, let's set a filter for only confirmed loss events (data_disclosure="Yes").
+Then get the interaction of the top level actions and assets.
+
 
 ```r
-gg <- ggplot(hacking.actor, aes(x = enum, y = primary, fill = x, label = x))
-gg <- gg + geom_tile() + geom_text()
-gg <- gg + scale_fill_gradient(low = "#D8EEFE", high = "#4682B4")
-gg <- gg + ylab("External Variety") + xlab("Hacking Vector")
-gg <- gg + ggtitle("External Actors by Hacking Vector")
-gg <- gg + theme_bw()
-gg <- gg + theme(axis.text.x = element_text(angle = 90, hjust = 1), legend.position = "none")
-print(gg)
+ddfilter <- getfilter(vcdb, and = list(attribute.confidentiality.data_disclosure = "Yes"))
+action.asset <- getenumby(vcdb, enum = "asset.assets", primary = "action", filter = ddfilter)
+head(action.asset)
 ```
 
-![plot of chunk basic-heatmap](figure/basic-heatmap.png) 
+```
+##     enum  primary   x
+## 1 Server  hacking 315
+## 2 Server    error  70
+## 3 Server   misuse 123
+## 4 Server   social  27
+## 5 Server  malware  14
+## 6 Server physical   5
+```
+
+
+
+
+
+And now make a nice 2 x 2 grid with the data.
+
+![plot of chunk a2grid](figure/a2grid.png) 
 
 
 
 ```
 ##    user  system elapsed 
-##   4.256   0.187   4.796
+##   5.124   0.121   5.274
 ```
 

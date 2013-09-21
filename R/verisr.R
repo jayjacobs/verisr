@@ -167,42 +167,139 @@ getfilter <- function(veris, and=NULL, or=NULL, or.not=NULL, and.not=NULL) {
 #' This will collect an enumation and count it.
 #'
 #' @param veris a verisr object
-#' @param enum the field to count
-#' @param by the second enumeration to sort by
+#' @param enum the main enumeration field 
+#' @param primary the primary enumeration to filter on
+#' @param secondary the (optional) secondary enumeration to filter on
+#' @param filter limit what records are searched (optional)
+#' @param add.n include a total count of variables found (denominator)
+#' @param add.freq include a percentage (x/n)
+#' @param fillzero fill in missing matches with zeros
 #' @export
 #' @examples
 #' \dontrun{
 #' hacking <- getenum(veris, "action.hacking.variety")
 #' external <- getenum(veris, "actor.external.motive")
 #' }
-getenumby <- function(veris, enum, by) {
-  # get the internal list for the enumeration
-  primary.enum <- getintenum(veris, enum)
-  #secondary.df <- getenum(veris, by)
-  if(by=="industry2") {
-    secondary.enum <- getindustry(veris, 2)
-  } else {
-    secondary.enum <- getintenum(veris, by)
+getenumby <- function(veris, enum, primary, secondary=NULL, filter=NULL, add.n=F, add.freq=F, fillzero=T) {
+  if(length(by) > 2) {
+    warning("by variable has more than 2, only taking first 2")
   }
-  by.list <- unique(unlist(secondary.enum))
-  by.list <- by.list[!is.na(by.list)]
-  rez <- do.call(rbind, lapply(by.list, function(x) {
-    local.filter <- getsimfilter(secondary.enum, x)
-    pri.count <- table(unlist(primary.enum[local.filter]))
-    if (length(pri.count)) {
-      int.df <- data.frame(enum=names(pri.count), 
-                           x=as.vector(pri.count), 
-                           primary=x)      
-    } else {
-      int.df <- NULL
+  # get the internal main enum
+  main <- getintenum(veris, enum)
+  # make sure we have something in this list
+  if (!any(!is.na(unlist(main)))) {
+    stop(paste("Primary enumeration \"", enum, "\": no incidents matching", sep=""))
+  }
+  # get the primary enum
+  penum <- getintenum(veris, primary)
+  if (!any(!is.na(unlist(penum)))) {
+    stop(paste("Primary enumeration \"", primary, "\": no incidents matching", sep=""))
+  }
+  # see if there is a secondary and prepare it (or null list if not)
+  if (!is.null(secondary)) {
+    senum <- getintenum(veris, secondary)    
+    if (!any(!is.na(unlist(senum)))) {
+      stop(paste("Secondary enumeration \"", secondary, "\": no incidents matching", sep=""))
     }
-    int.df
-  }) )
-  if(by=="industry2") {
-    rez$primary <- merge(rez, industry2, by.x="primary", by.y="code")$title
+  } else {
+    senum <- rep(list(NULL), length(main))
   }
-  rez
-}  
+  ## apply the filter if one was passed in
+  if (!is.null(filter)) {
+    main <- ifelse(filter, main, NA)
+    penum <- ifelse(filter, penum, NA)
+    senum <- ifelse(filter, senum, NA)
+    if (!any(!is.na(unlist(main)))) {
+      stop(paste("Primary enumeration \"", enum, "\": no incidents matching after filter applied", sep=""))
+    }
+    if (!any(!is.na(unlist(penum)))) {
+      stop(paste("Primary enumeration \"", primary, "\": no incidents matching after filter applied", sep=""))
+    }
+    if (!is.null(secondary)) {
+      if (!any(!is.na(unlist(senum)))) {
+        stop(paste("Secondary enumeration \"", secondary, "\": no incidents matching", sep=""))
+      }
+    }
+  }
+  
+  full.df <- do.call(rbind, lapply(seq(length(main)), function(index) {
+    # skip if we have any NA values across the board.
+    if (!any(is.na(c(main[[index]], 
+                     penum[[index]],
+                     senum[[index]])))) {
+      if (is.null(secondary)) {
+        expand.grid(enum=unlist(main[[index]]), 
+                    primary=unlist(penum[[index]]))
+      } else {
+        expand.grid(enum=unlist(main[[index]]), 
+                    primary=unlist(penum[[index]]),
+                    secondary=unlist(senum[[index]]))
+      }
+    }      
+  }))
+  full.df$x <- 1
+  retval <- aggregate(x ~ ., data=full.df, FUN=sum)
+  # now that we have a data frame
+  # fill with zero's?
+  if(fillzero) {
+    if (is.null(secondary)) {
+      zerofill <- expand.grid(enum=unique(retval$enum), 
+                              primary=unique(retval$primary))
+    } else {
+      zerofill <- expand.grid(enum=unique(retval$enum), 
+                              primary=unique(retval$primary),
+                              secondary=unique(retval$secondary))
+    }
+    retval <- merge(retval, zerofill, all=T)
+    retval$x[is.na(retval$x)] <- 0
+  }
+  sort.df <- aggregate(x ~ enum, data=retval, FUN=sum)
+  sort.enum <- as.character(sort.df$enum[with(sort.df, order(x))])
+  retval$enum <- factor(retval$enum, levels=sort.enum, ordered=T)
+  if (add.n | add.freq) {
+    pre.n <- sapply(seq(length(main)), function(index) {
+      ifelse(!any(is.na(c(main[[index]],penum[[index]], senum[[index]]))), 1, 0)
+    })
+    n <- sum(pre.n)
+  }
+  if (add.n) {
+    retval$n <- n
+  }
+  if (add.freq) {
+    retval$freq <- round(retval$x/n, 3)
+  }
+  
+  retval
+}
+
+# save_off <- fucntion(veris, enum, by)
+#   # get the internal list for the enumeration
+#   primary.enum <- getintenum(veris, enum)
+#   #secondary.df <- getenum(veris, by)
+#   if(by=="industry2") {
+#     secondary.enum <- getindustry(veris, 2)
+#   } else {
+#     secondary.enum <- getintenum(veris, by)
+#   }
+#   by.list <- unique(unlist(secondary.enum))
+#   by.list <- by.list[!is.na(by.list)]
+#   rez <- do.call(rbind, lapply(by.list, function(x) {
+#     local.filter <- getsimfilter(secondary.enum, x)
+#     pri.count <- table(unlist(primary.enum[local.filter]))
+#     if (length(pri.count)) {
+#       int.df <- data.frame(enum=names(pri.count), 
+#                            x=as.vector(pri.count), 
+#                            primary=x)      
+#     } else {
+#       int.df <- NULL
+#     }
+#     int.df
+#   }) )
+#   if(by=="industry2") {
+#     rez$primary <- merge(rez, industry2, by.x="primary", by.y="code")$title
+#   }
+#   rez
+# }  
 #foo <-getenumby(vcdb, "action.hacking.variety", "actor.external.variety")
 #foo <-getenumby(vcdb, "action.hacking.variety", "industry2")
 #ggplot(foo, aes(enum, x)) + geom_bar(stat="identity") + facet_wrap( ~ primary, ncol=2) + coord_flip() + theme_bw()
