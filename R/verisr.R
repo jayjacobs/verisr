@@ -24,24 +24,24 @@ json2veris <- function(dir=".") {
   veris
 }
 
-#' Count the existance of a field in all records
-#'
-#' This function will count where the field is not null
-#'
-#' @param veris a verisr object
-#' @param field the field to count
-#' @export
-#' @examples
-#' \dontrun{
-#' hacking <- count(veris, "action.hacking")
-#' external <- count(veris, "actor.external")
-#' }
-count <- function(veris, field) {
-  sapply(field, function(f) {
-    vars <- unlist(strsplit(f, ".", fixed=T))
-    sum(unlist(lapply(veris, function(x) ifelse(is.null(x[[vars]]), 0, 1))))
-  })
-}
+# # Count the existance of a field in all records
+# #
+# # This function will count where the field is not null
+# #
+# # @param veris a verisr object
+# # @param field the field to count
+# # @export
+# # @examples
+# # \dontrun{
+# # hacking <- count(veris, "action.hacking")
+# # external <- count(veris, "actor.external")
+# # }
+# count <- function(veris, field) {
+#   sapply(field, function(f) {
+#     vars <- unlist(strsplit(f, ".", fixed=T))
+#     sum(unlist(lapply(veris, function(x) ifelse(is.null(x[[vars]]), 0, 1))))
+#   })
+# }
 
 #' Get a vector of values from an enumeration
 #'
@@ -303,22 +303,22 @@ getenumby <- function(veris, enum, primary, secondary=NULL, filter=NULL, add.n=F
 #foo <-getenumby(vcdb, "action.hacking.variety", "actor.external.variety")
 #foo <-getenumby(vcdb, "action.hacking.variety", "industry2")
 #ggplot(foo, aes(enum, x)) + geom_bar(stat="identity") + facet_wrap( ~ primary, ncol=2) + coord_flip() + theme_bw()
-
-getindustry <- function(veris, len=2) {
-  int.enum <- getintenum(veris, "victim.industry")
-  sapply(int.enum, function(x) {
-    sapply(x, function(y) {
-      ret.val <- NA
-      if (nchar(y) > len) {
-        ret.val <- substr(y, 1, len)
-        if (ret.val==rep("0", len)) {
-          ret.val <- NA
-        }
-      } 
-      ret.val      
-    })
-  })  
-}
+# 
+# getindustry <- function(veris, len=2) {
+#   int.enum <- getintenum(veris, "victim.industry")
+#   sapply(int.enum, function(x) {
+#     sapply(x, function(y) {
+#       ret.val <- NA
+#       if (nchar(y) > len) {
+#         ret.val <- substr(y, 1, len)
+#         if (ret.val==rep("0", len)) {
+#           ret.val <- NA
+#         }
+#       } 
+#       ret.val      
+#     })
+#   })  
+# }
 
 #' Internal Function.
 #' This will iterate through the veris object and return
@@ -412,9 +412,9 @@ getintenum <- function(veris, enum) {
 #   sapply(int.enum, function(x) { ifelse(value %in% x, TRUE, FALSE)})
 # }
 #   
-getsimfilter <- function(int.enum, value) {
- sapply(int.enum, function(x) { ifelse(value %in% x, TRUE, FALSE)})
-}  
+# getsimfilter <- function(int.enum, value) {
+#  sapply(int.enum, function(x) { ifelse(value %in% x, TRUE, FALSE)})
+# }  
 
 
 
@@ -458,8 +458,8 @@ summary.verisr <- function(object, ...) {
 #' @keywords internal
 #' @method plot verisr
 #' @export
-plot.verisr <- function(object, ...) {
-  x <- object
+plot.verisr <- function(x, y, ...) {
+#  x <- object
   actor <- getenum(x, "actor", add.freq=T)
   action <- getenum(x, "action", add.freq=T)
   asset <- getenum(x, "asset.assets", add.freq=T)
