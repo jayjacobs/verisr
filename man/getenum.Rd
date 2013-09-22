@@ -2,8 +2,8 @@
 \alias{getenum}
 \title{Get a vector of values from an enumeration}
 \usage{
-  getenum(veris, enum, filter = NULL, add.n = F,
-    add.freq = F)
+  getenum(veris, enum, primary = NULL, secondary = NULL,
+    filter = NULL, add.n = F, add.freq = F, fillzero = T)
 }
 \arguments{
   \item{veris}{a verisr object}

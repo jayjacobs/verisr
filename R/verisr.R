@@ -58,9 +58,15 @@ json2veris <- function(dir=".") {
 #' hacking <- getenum(veris, "action.hacking.variety")
 #' external <- getenum(veris, "actor.external.motive")
 #' }
-getenum <- function(veris, enum, filter=NULL, add.n=F, add.freq=F) {
+getenum <- function(veris, enum, primary=NULL, secondary=NULL, 
+                    filter=NULL, add.n=F, add.freq=F, fillzero=T) {
+  if(!missing(primary)) {
+    return(getenumby(veris=veris, enum=enum, primary=primary, 
+                     secondary=secondary, filter=filter, add.n=add.n,
+                     add.freq=add.freq, fillzero=fillzero))
+  }
   # get the internal list for the enumeration
-  int.enum <- getintenum(veris, enum)
+  int.enum <- getenumlist(veris, enum)
   # and apply the filter, it one was passed in
   if (!is.null(filter)) {
     int.enum <- ifelse(filter, int.enum, NA)
@@ -120,7 +126,7 @@ getfilter <- function(veris, and=NULL, or=NULL, or.not=NULL, and.not=NULL) {
   # of the value in that list
   simple.match <- function(either) {
     sapply(names(either), function(x) {
-      unlist(sapply(getintenum(veris, x), function(y) {
+      unlist(sapply(getenumlist(veris, x), function(y) {
         if (either[[x]]=="$exists") {
           match.list <- as.logical(sum(!is.na(y)))
         } else {
@@ -174,7 +180,6 @@ getfilter <- function(veris, and=NULL, or=NULL, or.not=NULL, and.not=NULL) {
 #' @param add.n include a total count of variables found (denominator)
 #' @param add.freq include a percentage (x/n)
 #' @param fillzero fill in missing matches with zeros
-#' @export
 #' @examples
 #' \dontrun{
 #' hacking <- getenum(veris, "action.hacking.variety")
@@ -185,19 +190,19 @@ getenumby <- function(veris, enum, primary, secondary=NULL, filter=NULL, add.n=F
     warning("by variable has more than 2, only taking first 2")
   }
   # get the internal main enum
-  main <- getintenum(veris, enum)
+  main <- getenumlist(veris, enum)
   # make sure we have something in this list
   if (!any(!is.na(unlist(main)))) {
     stop(paste("Primary enumeration \"", enum, "\": no incidents matching", sep=""))
   }
   # get the primary enum
-  penum <- getintenum(veris, primary)
+  penum <- getenumlist(veris, primary)
   if (!any(!is.na(unlist(penum)))) {
     stop(paste("Primary enumeration \"", primary, "\": no incidents matching", sep=""))
   }
   # see if there is a secondary and prepare it (or null list if not)
   if (!is.null(secondary)) {
-    senum <- getintenum(veris, secondary)    
+    senum <- getenumlist(veris, secondary)    
     if (!any(!is.na(unlist(senum)))) {
       stop(paste("Secondary enumeration \"", secondary, "\": no incidents matching", sep=""))
     }
@@ -274,12 +279,12 @@ getenumby <- function(veris, enum, primary, secondary=NULL, filter=NULL, add.n=F
 
 # save_off <- fucntion(veris, enum, by)
 #   # get the internal list for the enumeration
-#   primary.enum <- getintenum(veris, enum)
+#   primary.enum <- getenumlist(veris, enum)
 #   #secondary.df <- getenum(veris, by)
 #   if(by=="industry2") {
 #     secondary.enum <- getindustry(veris, 2)
 #   } else {
-#     secondary.enum <- getintenum(veris, by)
+#     secondary.enum <- getenumlist(veris, by)
 #   }
 #   by.list <- unique(unlist(secondary.enum))
 #   by.list <- by.list[!is.na(by.list)]
@@ -305,7 +310,7 @@ getenumby <- function(veris, enum, primary, secondary=NULL, filter=NULL, add.n=F
 #ggplot(foo, aes(enum, x)) + geom_bar(stat="identity") + facet_wrap( ~ primary, ncol=2) + coord_flip() + theme_bw()
 # 
 # getindustry <- function(veris, len=2) {
-#   int.enum <- getintenum(veris, "victim.industry")
+#   int.enum <- getenumlist(veris, "victim.industry")
 #   sapply(int.enum, function(x) {
 #     sapply(x, function(y) {
 #       ret.val <- NA
@@ -320,7 +325,8 @@ getenumby <- function(veris, enum, primary, secondary=NULL, filter=NULL, add.n=F
 #   })  
 # }
 
-#' Internal Function.
+#' return a list matching vcdb ordering and length with requested object
+#' 
 #' This will iterate through the veris object and return
 #' a list of matches.  This is intented to maintain the orginal
 #' indexes of the veris object so further manipulation can be done.
@@ -329,17 +335,17 @@ getenumby <- function(veris, enum, primary, secondary=NULL, filter=NULL, add.n=F
 #' off the industry at the N value or return same length of zeros
 #' if it isn't long enough.
 #' 
-#'
 #' @param veris a verisr object
 #' @param enum the field to count
-getintenum <- function(veris, enum) {
+#' @export
+getenumlist <- function(veris, enum) {
   # if the veris object has null names and yet length
   # it is an array, and we simply want to step into
   # and through it.  The top level veris object
   # is an array, as is things like victim and assets
   # and data variety
   if(is.null(names(veris)) & length(veris)) {
-    return(lapply(veris, getintenum, enum))
+    return(lapply(veris, getenumlist, enum))
   }
   # now we are in the meat of the function
   # and we should have either a full slice
@@ -386,42 +392,18 @@ getintenum <- function(veris, enum) {
     if (grepl("^industry\\d$", therest, perl=T)) {
       # figure out the length of industry to return
       ind.len <- substr(therest, 9, 9)
-      retval <- getintenum(veris[[tag]], "industry")
+      retval <- getenumlist(veris[[tag]], "industry")
       retval <- lapply(retval, function(x) {
         i <- substr(x, 1, ind.len)
         ifelse(nchar(i)==ind.len, i, paste(rep("0", ind.len), collapse=""))
       })
     } else {
-      retval <- getintenum(veris[[tag]], therest)      
+      retval <- getenumlist(veris[[tag]], therest)      
     }
   }
   retval
 }
 
-#' Internal Function.
-#' This will create a mask of indexes based on filter
-#' a list of matches.  This is intented to maintain the orginal
-#' indexes of the veris object so further manipulation can be done.
-#'
-#' @param veris a verisr object
-#' @param enum the field to count
-#' @param value 
-# getfilter <- function(veris, enum, value) {
-#   # test if value is regex!
-#   int.enum <- getintenum(veris, enum)
-#   sapply(int.enum, function(x) { ifelse(value %in% x, TRUE, FALSE)})
-# }
-#   
-# getsimfilter <- function(int.enum, value) {
-#  sapply(int.enum, function(x) { ifelse(value %in% x, TRUE, FALSE)})
-# }  
-
-
-
-#dir <- "~/Documents/github/VCDB/incidents"
-#dir <- "~/Documents/json/newfinal/uscert"
-# dir <- c("~/Documents/github/VCDB/incidents", "~/Documents/json/newfinal/vzint")
-#vcdb <- json2veris(dir)
 
 #' Displays a useful description of a verisr object
 #' 
