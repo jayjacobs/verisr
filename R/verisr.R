@@ -49,9 +49,12 @@ json2veris <- function(dir=".") {
 #'
 #' @param veris a verisr object
 #' @param enum the field to count
+#' @param primary a primary field to split the enum by
+#' @param secondary a secondary field to split the enum by
 #' @param filter limit what records are searched (optional)
 #' @param add.n include a total count of variables found (denominator)
 #' @param add.freq include a percentage (x/n)
+#' @param fillzero add in zeros for missing combinations (if primary or secondary specified)
 #' @export
 #' @examples
 #' \dontrun{
@@ -80,7 +83,7 @@ getenum <- function(veris, enum, primary=NULL, secondary=NULL,
   # convert to data.frame
   enum.df <- data.frame(enum=names(count.enum), x=as.vector(count.enum))
   # order it
-  enum.df <- enum.df[with(enum.df, order(x)), ]
+  enum.df <- enum.df[with(enum.df, order(-x)), ]
   # reset the row names
   row.names(enum.df) <- 1:nrow(enum.df)
   # make the enum a factor
@@ -367,17 +370,22 @@ getenumlist <- function(veris, enum) {
     # if we have names return those
     # it's an easy way to count actions, actors, etc.
     these.names <- names(veris[[tag]])
-#    cat("the rest is blank, names:", these.names, "null:", is.null(these.names), "\n")
+
+    #cat("the rest is blank, names:", these.names, "null:", is.null(these.names), "\n")
     if (tag=="assets") {
       assetmap <- c("S"="Server", "N"="Network", "U"="User Dev", "M"="Media", 
                     "P"="Person", "T"="Kiosk/Term", "Unknown"="Unknown")
-      retval <- sapply(veris[[tag]], function(asset) {
+      retval <- unlist(sapply(veris[[tag]], function(asset) {
         myasset <- ifelse(asset$variety=="Unknown", "Unknown", substr(asset$variety, 1, 1))
         myamount <- ifelse(is.null(asset$amount), 1, asset$amount)
         rep(assetmap[[myasset]], myamount)
-      })
+      }))
     } else if (!is.null(these.names)) {
       retval <- these.names
+      # note to self, this is causing the getMatrix functions 
+      # to return NA, as the names of the return vector are blank
+#    } else if (is.null(these.names)) {
+#      retval <- NA
     } else {
       retval <- veris[[tag]]
     }
@@ -397,13 +405,47 @@ getenumlist <- function(veris, enum) {
         i <- substr(x, 1, ind.len)
         ifelse(nchar(i)==ind.len, i, paste(rep("0", ind.len), collapse=""))
       })
+    } else if (tag=="assets" & therest=="variety") {
+      retval <- unlist(sapply(veris[[tag]], getVarietyAmount))
+    } else if (tag=="data" & therest=="variety") {
+      retval <- unlist(getenumlist(veris[[tag]], therest))
+    } else if (tag=="loss" & therest=="variety") {
+      # TODO: impact could use attention
+      retval <- unlist(sapply(veris[[tag]], getVarietyAmount))
     } else {
       retval <- getenumlist(veris[[tag]], therest)      
     }
   }
   retval
 }
+  
 
+#' Internal: Expand variety
+#' 
+#' This will expand all of the "variety" fields by the amount
+#' specified in the "amount" field of the same level object.
+#' 
+#' @param x a slice of a veris a verisr object
+getVarietyAmount <- function(x) {
+  variety <- x[['variety']]
+  if ('amount' %in% names(x)) {
+    amount <- ifelse(x[['amount']]>1, x[['amount']], 1)
+    variety <- rep(variety, amount)
+  }
+  variety
+}
+
+#' Internal: Get fields names  
+#' 
+#' This will grab all the field names from a veris object
+#' 
+#' @param veris a verisr object
+getvnames <- function(veris) {
+  # all field names
+  vnames <- sort(unique(names(unlist(veris))))
+  # remove the replicated numbered ones
+  vnames[grep("\\D\\d$", vnames, perl=T, invert=T)]
+}
 
 #' Displays a useful description of a verisr object
 #' 
@@ -463,3 +505,34 @@ plot.verisr <- function(x, y, ...) {
   par(mfrow=savemfrow)
   par(mar=savemar)
 }
+
+#' Metadata for 2-digit NAICS industry classification
+#'
+#' This data allows a mapping between two digit NAICS code and the 
+#' full definition provided by the NAICS specification and a shorter
+#' version of the title for compact visuals.
+#' @name industry2
+#' @docType data
+#' @references \url{www.census.gov/naics/}
+#' @keywords data
+NULL
+
+#' Metadata for 3-digit NAICS industry classification
+#'
+#' This data allows a mapping between three digit NAICS code and the 
+#' full definition provided by the NAICS specification.
+#' @name industry3
+#' @docType data
+#' @references \url{www.census.gov/naics/}
+#' @keywords data
+NULL
+
+#' Metadata for victim orgsize
+#'
+#' This data allows a mapping between the enumeration of victim 
+#' employee_count and the designation of "large" and "small"  
+#' @name orgsize
+#' @docType data
+#' @references \url{www.veriscommunity.net}
+#' @keywords data
+NULL

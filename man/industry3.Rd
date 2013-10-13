@@ -1,0 +1,15 @@
+\docType{data}
+\name{industry3}
+\alias{industry3}
+\title{Metadata for 3-digit NAICS industry classification}
+\description{
+  This data allows a mapping between three digit NAICS code
+  and the full definition provided by the NAICS
+  specification.
+}
+\references{
+  \url{www.census.gov/naics/}
+}
+\keyword{data}
+\keyword{datasets}
+

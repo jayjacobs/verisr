@@ -9,6 +9,7 @@ Icon
 .RDataTmp
 README.html
 testing*.R
+ignore/*
 
 <<<<<<< HEAD
 .dropbox

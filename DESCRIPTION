@@ -8,6 +8,7 @@ Maintainer: Jay Jacobs <jay@beechplane.com>
 Description: Loads up VERIS JSON objects and offers convenience functions
 License: GPL-2
 Collate:
+    'matrix.R'
     'verisr.R'
 Imports:
     rjson
