@@ -2,8 +2,8 @@
 \alias{getenumby}
 \title{Get a count of enumerations values by some other enumeration}
 \usage{
-  getenumby(veris, enum, primary, secondary = NULL,
-    filter = NULL, add.n = F, add.freq = F, fillzero = T)
+getenumby(veris, enum, primary, secondary = NULL, filter = NULL,
+  add.n = F, add.freq = F, fillzero = T)
 }
 \arguments{
   \item{veris}{a verisr object}
@@ -25,7 +25,7 @@
   \item{fillzero}{fill in missing matches with zeros}
 }
 \description{
-  This will collect an enumation and count it.
+This will collect an enumation and count it.
 }
 \examples{
 \dontrun{

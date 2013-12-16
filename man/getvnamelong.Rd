@@ -1,0 +1,15 @@
+\name{getvnamelong}
+\alias{getvnamelong}
+\title{Internal: Get fields names using a long method}
+\usage{
+getvnamelong(veris, curname = NULL)
+}
+\arguments{
+  \item{veris}{a verisr object}
+
+  \item{curname}{used to maintain state internally}
+}
+\description{
+This will grab all the field names from a veris object
+}
+

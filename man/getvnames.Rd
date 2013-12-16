@@ -2,12 +2,12 @@
 \alias{getvnames}
 \title{Internal: Get fields names}
 \usage{
-  getvnames(veris)
+getvnames(veris)
 }
 \arguments{
   \item{veris}{a verisr object}
 }
 \description{
-  This will grab all the field names from a veris object
+This will grab all the field names from a veris object
 }
 

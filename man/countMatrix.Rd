@@ -2,7 +2,7 @@
 \alias{countMatrix}
 \title{count incidents in clusters}
 \usage{
-  countMatrix(veris, label, filter = NULL)
+countMatrix(veris, label, filter = NULL)
 }
 \arguments{
   \item{veris}{a verisr object}
@@ -12,7 +12,7 @@
   \item{filter}{an optional filter to apply}
 }
 \description{
-  given a verisr object and a list of labels, this will
-  create a data.frame of the data suitable for plotting.
+given a verisr object and a list of labels, this will
+create a data.frame of the data suitable for plotting.
 }
 

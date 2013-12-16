@@ -2,14 +2,13 @@
 \alias{getVarietyAmount}
 \title{Internal: Expand variety}
 \usage{
-  getVarietyAmount(x)
+getVarietyAmount(x)
 }
 \arguments{
   \item{x}{a slice of a veris a verisr object}
 }
 \description{
-  This will expand all of the "variety" fields by the
-  amount specified in the "amount" field of the same level
-  object.
+This will expand all of the "variety" fields by the amount
+specified in the "amount" field of the same level object.
 }
 

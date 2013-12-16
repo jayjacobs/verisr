@@ -2,7 +2,7 @@
 \alias{summary.verisr}
 \title{Displays a useful description of a verisr object}
 \usage{
-  \method{summary}{verisr} (object, ...)
+\method{summary}{verisr}(object, ...)
 }
 \arguments{
   \item{object}{veris object to summarise}
@@ -11,7 +11,7 @@
   with generic)}
 }
 \description{
-  Displays a useful description of a verisr object
+Displays a useful description of a verisr object
 }
 \keyword{internal}
 

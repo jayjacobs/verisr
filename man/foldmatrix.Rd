@@ -2,7 +2,7 @@
 \alias{foldmatrix}
 \title{compact rows for analysis}
 \usage{
-  foldmatrix(pca, feature, min = 1, clean = FALSE)
+foldmatrix(pca, feature, min = 1, clean = FALSE)
 }
 \arguments{
   \item{pca}{a pca matrix object}
@@ -18,8 +18,8 @@
   will mess up a PCA or MDS function and remove it.}
 }
 \description{
-  given a verisr object and a list of features, this will
-  create a matrix of the data suitable for further PCA,
-  hclust or other dist() analysis.
+given a verisr object and a list of features, this will
+create a matrix of the data suitable for further PCA,
+hclust or other dist() analysis.
 }
 

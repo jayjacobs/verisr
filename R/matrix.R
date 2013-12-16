@@ -25,7 +25,7 @@ veris2csv <- function(veris) {
   # pull the text into a results for text field
   rtext <- sapply(vtext, function(x) {
     ## victim will be messed up
-    rval <- lapply(getenumlist(veris, x), function(vrow) { unlist(vrow)[1] })
+    rval <- sapply(getenumlist(veris, x), function(vrow) { unlist(vrow)[1] })
     rval[is.na(rval)] <- ""
     rval
   })
@@ -54,7 +54,8 @@ veris2csv <- function(veris) {
     }
     asset
   }))  
-  sortvmatrix(cbind(rtext, renum, assets))
+  #sortvmatrix(cbind(rtext, renum, assets))
+  sortvmatrix(cbind(data.frame(rtext), data.frame(renum), data.frame(assets)))
 }
 
 #' Internal: sort veris columns  
@@ -68,7 +69,8 @@ sortvmatrix <- function(x) {
                  "notes", "victim", "actor.ext", "actor.int", "actor.par",
                  "actor.unk",
                  "action.mal", "action.hack", "action.soc", "action.mis",
-                 "action.phy", "action.err", "action.env", "asset",
+                 "action.phy", "action.err", "action.env", "action.unk", 
+                 "asset",
                  "attribute.conf", "attribute.int", "attribute.avail",
                  "timeline", "discovery", "target", "control", "correct",
                  "cost", "ioc", "impact", "plus")
@@ -121,6 +123,7 @@ veris2matrix <- function(veris) {
     outmat
   }))
   final.matrix <- sortvmatrix(renum)
+  # strip out unknowns, it's the right thing to do.
   final.matrix <- final.matrix[ ,grep("Unknown|unknown|00", colnames(final.matrix), invert=T)]
   final.matrix[ ,colSums(final.matrix)!=nrow(final.matrix)]
 }

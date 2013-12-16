@@ -2,7 +2,7 @@
 \alias{plot.verisr}
 \title{Displays a four panel barplot of a verisr object}
 \usage{
-  \method{plot}{verisr} (x, y, ...)
+\method{plot}{verisr}(x, y, ...)
 }
 \arguments{
   \item{object}{veris object to summarise}
@@ -11,7 +11,7 @@
   with generic)}
 }
 \description{
-  Displays a four panel barplot of a verisr object
+Displays a four panel barplot of a verisr object
 }
 \keyword{internal}
 

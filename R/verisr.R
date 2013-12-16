@@ -183,6 +183,7 @@ getfilter <- function(veris, and=NULL, or=NULL, or.not=NULL, and.not=NULL) {
 #' @param add.n include a total count of variables found (denominator)
 #' @param add.freq include a percentage (x/n)
 #' @param fillzero fill in missing matches with zeros
+#' @export
 #' @examples
 #' \dontrun{
 #' hacking <- getenum(veris, "action.hacking.variety")
@@ -442,9 +443,34 @@ getVarietyAmount <- function(x) {
 #' @param veris a verisr object
 getvnames <- function(veris) {
   # all field names
-  vnames <- sort(unique(names(unlist(veris))))
+  #vnames <- sort(unique(names(unlist(veris))))
   # remove the replicated numbered ones
-  vnames[grep("\\D\\d$", vnames, perl=T, invert=T)]
+  #vnames[grep("\\D\\d$", vnames, perl=T, invert=T)]
+  sort(unique(unlist(getvnamelong(veris))))
+}
+
+#' Internal: Get fields names using a long method
+#' 
+#' This will grab all the field names from a veris object
+#' 
+#' @param veris a verisr object
+#' @param curname used to maintain state internally
+getvnamelong <- function(veris, curname = NULL) {
+  if(is.null(names(veris)) & length(veris)) {
+    return(lapply(veris, getvnamelong, curname))
+  }
+  realname <- function(n) {
+    if (is.null(curname)) n else paste0(curname, ".", n)
+  }
+  foo <- lapply(names(veris), function(x) {
+    if (mode(veris[[x]]) %in% c("character", "numeric", "logical")) {
+      ret <- realname(x)
+    } else {
+      ret <- getvnamelong(veris[[x]], realname(x))      
+    }
+    ret
+  })
+  foo
 }
 
 #' Displays a useful description of a verisr object
