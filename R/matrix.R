@@ -92,21 +92,29 @@ sortvmatrix <- function(x) {
 #' suitable for further PCA analysis 
 #' 
 #' @param veris a verisr object
+#' @param industry either 2 or 3 digits for industry
+#' @param unknown logical, whether to include Unknown/Other fields
 #' @export
-veris2matrix <- function(veris) {
+veris2matrix <- function(veris, industry=2, unknown=F) {
   vnames <- getvnames(veris)
   enumfields <- c("actor", "action")
   venum <- vnames[grep(paste('^',enumfields, sep='', collapse='|'), vnames)]
   venum <- venum[grep("cve|name|notes|country|industry", venum, invert=T)]
+  venum <- c(venum, vnames[grep('timeline.*unit', vnames)] )
+  if (industry==2) {
+    venum <- c(venum, "victim.industry2")    
+  } else {
+    venum <- c(venum, "victim.industry3")    
+  }
   venum <- c(venum, "actor", "action", 
-             "victim.industry2", 
-             #"victim.industry3", 
              "victim.employee_count", 
              "security_incident", "asset.assets", "asset.assets.variety", "asset.cloud", 
              "asset.hosting", "asset.management", "asset.ownership",
              "attribute.confidentiality.data.variety", "attribute.confidentiality.data_disclosure",
+             "discovery_method", "targeted",
              "attribute.integrity.variety", "attribute.availability.variety")
   # skipping "discovery_method", "targeted"
+  # fixed that, not skipping discovery_method or targeted
   # now do the categorical values
   renum <- do.call(cbind, sapply(venum, function(x) {
     # create a matrix for this one venum name, one column for each value pulled
@@ -124,7 +132,10 @@ veris2matrix <- function(veris) {
   }))
   final.matrix <- sortvmatrix(renum)
   # strip out unknowns, it's the right thing to do.
-  final.matrix <- final.matrix[ ,grep("Unknown|unknown|00", colnames(final.matrix), invert=T)]
+  # careful here, also stripping out "NA" which may not be appropriate
+  if(!unknown) {
+    final.matrix <- final.matrix[ ,grep("Unknown|unknown|00|NA", colnames(final.matrix), invert=T)]
+  }
   final.matrix[ ,colSums(final.matrix)!=nrow(final.matrix)]
 }
 
