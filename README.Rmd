@@ -17,7 +17,7 @@ To begin, load the package and point it at a directory of JSON files storing VER
 
 ```{r}
 library(verisr)
-vcdb.dir <- "../VCDB/incidents"
+vcdb.dir <- "../VCDB/data/json/"
 vcdb <- json2veris(vcdb.dir)
 ```
 
