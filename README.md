@@ -32,27 +32,27 @@ summary(vcdb)
 ```
 
 ```
-## 2559 incidents in this object.
+## 2576 incidents in this object.
 ## 
 ## Actor:
 ## external internal  partner  unknown 
-##     1464      893      137      120 
+##     1481      893      137      120 
 ## 
 ## Action:
 ## environmental         error       hacking       malware        misuse 
-##             3           593           740            94           412 
+##             3           593           758            93           412 
 ##      physical        social       unknown 
 ##           657            58           139 
 ## 
 ## Asset:
 ## Kiosk/Term      Media    Network     Person     Server    Unknown 
-##         60        702         20         71       1155        186 
+##         60        702         20         71       1172        186 
 ##   User Dev 
 ##        576 
 ## 
 ## Attribute:
-##  confidentiality     availability  confidentiality        integrity 
-##                2              894             2374              462
+##    availability confidentiality       integrity 
+##             894            2377             479
 ```
 
 
@@ -76,8 +76,8 @@ print(ext.variety)
 
 ```
 ##                enum   x
-## 1           Unknown 991
-## 2          Activist 255
+## 1           Unknown 990
+## 2          Activist 273
 ## 3      Unaffiliated  99
 ## 4   Organized crime  59
 ## 5   Former employee  16
@@ -116,7 +116,7 @@ head(hacking.actor)
 ```
 ##              enum         primary   x
 ## 1 Web application         Unknown 167
-## 2 Web application        Activist 197
+## 2 Web application        Activist 215
 ## 3 Web application Organized crime   8
 ## 4 Web application    Unaffiliated  55
 ## 5 Web application      Competitor   0
@@ -153,12 +153,12 @@ head(action.asset)
 
 ```
 ##     enum primary   x
-## 1 Server hacking 421
+## 1 Server hacking 423
 ## 2 Server  misuse 213
 ## 3 Server   error 105
 ## 4 Server  social  38
 ## 5 Server unknown  18
-## 6 Server malware  36
+## 6 Server malware  35
 ```
 
 
@@ -173,6 +173,6 @@ And now make a nice 2 x 2 grid with the data.
 
 ```
 ##    user  system elapsed 
-##   6.742   0.361   7.536
+##   6.807   0.150   7.006
 ```
 
