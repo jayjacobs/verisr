@@ -28,3 +28,27 @@ indname2label <- function(industry) {
   })
   industry2label(codes)
 }
+
+#' return a vector for ordered factors within VERIS.
+#' 
+#' given a VERIS enumeration field, return a vector
+#' that can be used to sort the factors of the 
+#' enumerations.
+#' 
+#' @param enum a verisr field name
+#' @param unknown logical; include unknown in the enumeration
+#' @export
+getlevel <- function(enum, unknown=T) {
+  switch(enum,
+         actor=c("external", "internal", "partner", "unknown"),
+         action=c("malware", "hacking", "social", "misuse", "physical", "error", "environmental", "unknown"),
+         asset.assets=c("Server", "Network", "User Dev", "Media", "Person", "Kiosk/Term", "Unknown"),
+         attribute=c("confidentiality", "integrity", "availability"),
+         attribute.confidentiality.data.variety=c(
+           "Payment", "Bank", "Credentials", "Personal", "Medical", 
+           "Classified", "Copyrighted", "System", "Internal", "Secrets", 
+           "Other", "Unknown"),
+         timeline.unit=c( "Seconds", "Minutes", "Hours", "Days",
+            "Weeks", "Months", "Years", "Never", "Unknown", "NA")
+         )
+}

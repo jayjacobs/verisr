@@ -376,11 +376,13 @@ getenumlist <- function(veris, enum) {
     if (tag=="assets") {
       assetmap <- c("S"="Server", "N"="Network", "U"="User Dev", "M"="Media", 
                     "P"="Person", "T"="Kiosk/Term", "Unknown"="Unknown")
-      retval <- unlist(sapply(veris[[tag]], function(asset) {
+      retval <- unique(unlist(sapply(veris[[tag]], function(asset) {
         myasset <- ifelse(asset$variety=="Unknown", "Unknown", substr(asset$variety, 1, 1))
-        myamount <- ifelse(is.null(asset$amount), 1, asset$amount)
+        myamount <- 1 # not counting more than one here
+        # myamount <- ifelse(is.null(asset$amount), 1, asset$amount)
         rep(assetmap[[myasset]], myamount)
-      }))
+        
+      })))
     } else if (!is.null(these.names)) {
       retval <- these.names
       # note to self, this is causing the getMatrix functions 
@@ -429,10 +431,10 @@ getenumlist <- function(veris, enum) {
 #' @param x a slice of a veris a verisr object
 getVarietyAmount <- function(x) {
   variety <- x[['variety']]
-  if ('amount' %in% names(x)) {
-    amount <- ifelse(x[['amount']]>1, x[['amount']], 1)
-    variety <- rep(variety, amount)
-  }
+  #if ('amount' %in% names(x)) {
+  #  amount <- ifelse(x[['amount']]>1, x[['amount']], 1)
+  #  variety <- rep(variety, amount)
+  #}
   variety
 }
 
