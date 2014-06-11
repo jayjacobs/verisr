@@ -1,51 +1,413 @@
-#' Read in all the JSON files in directory
+#' Read in all the VERIS incidents (JSON files) in a given directory.
 #'
 #' This function will iterate through all the JSON files (regex pattern of "json$") in
-#' the given directory and parse it as a VERIS object.
-#' This will return a verisr object.
+#' the given directory and parse it as an encoded VERIS record.  This function
+#' requires that a JSON schema be available for the VERIS data.  If the variable is 
+#' not specified, it will attempt to grab the "verisc-merged.json" schema from
+#' https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json.
+#' 
+#' This will return a verisr object, which is a data.table object and can be 
+#' directly accesses as such.
+#' 
+#' Couple of unique things...  The returned object will have additional fields 
+#' for convenience: TODO list those.
+#' 
+#' The victim.secondary.victim_id, external.actor.region, and any other free
+#' text field that can be repeated is being collapsed into a single string 
+#' seperated by a comma at the moment.  If that poses a challnge, open an issue
+#' on it.
 #'
-#' @param dir the directory to list through
+#' @param dir the directory to list through.  This may be a vector of 
+#' directorites, in which case each all the matching files in each 
+#' directory will be laoded.
+#' @param schema a full veris schema with enumerations included.
 #' @keywords json
-#' @export
 #' @import rjson
+#' @import data.table
+#' @import RCurl
 #' @examples
 #' \dontrun{
+#' # load up all the veris files in the "vcdb" directory
+#' # grab the schema off of github.
 #' veris <- json2veris(dir="~/vcdb")
+#' 
+#' # specify a local schema with localized plus section.
+#' veris <- json2veris(dir="~/vcdb", 
+#'                     schema="~/veris/verisc-local.json")
 #' }
-json2veris <- function(dir=".") {
+json2veris <- function(dir=".", schema=NULL) {
+  # if no schema, try to load it from github
+  if (missing(schema)) {
+    x <- getURL("https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json")
+    lschema <- fromJSON(json_str=x)
+  } else {
+    lschema <- fromJSON(file=schema)
+  }  
   # create listing of files
   jfiles <- unlist(sapply(dir, list.files, pattern = "json$", full.names=T))
-  # now read them all
-  veris <- lapply(jfiles, function(jfile) {
-    fromJSON(file=jfile, method='C')
-  })    
-  # set my class
-  class(veris) <- "verisr"
+  numfil <- length(jfiles)
+  # need to pull these before we loop, used over and over in loop
+  a4 <- geta4names()
+  vtype <- parseProps(lschema)
+  # get a named vector of field and types
+  vft <- getverisdf(lschema, a4)
+  # now create a data table with the specific blank types
+  # we just pulled from getverisdf()
+  veris <- as.data.table(lapply(seq_along(vft), function(i) {
+    if (vft[i]=="character") rep(NA_character_, numfil)
+    else if (vft[i]=="logical") rep(FALSE, numfil)
+    else if (vft[i]=="integer") rep(NA_real_, numfil)
+    else if (vft[i]=="double") rep(NA_real_, numfil)
+  }))
+  setnames(veris, names(vft))
+  # in each file, pull out the values and fill in the data table
+  for(i in seq_along(jfiles)) {
+    json <- fromJSON(file=jfiles[i], method='C')
+    nfield <- nameveris(json, a4, vtype)
+    if (length(nfield)==0) warning(paste("empty json file parsed from", jfiles[i]))
+    for(x in names(nfield)) {
+      tt <- tryCatch(set(veris, i=i, j=x, value=paste(nfield[[x]], collapse=",")),
+                     error=function(e) e, warning=function(w) w)
+      if(is(tt,"warning")) {
+        cat(paste0("Warning found trying to set ", i, ", \"", x, "\" for \"", nfield[[x]], "\"\n"))
+        cat("  length of assignment:", length(nfield[[x]]), "\n")
+        cat("  in", i, jfiles[i], "\n")
+        print(tt)
+        cat("\n")
+      }
+      
+    }
+    if(i %% 1000 == 0) {
+      cat("Parsing record", i, "of", length(jfiles), "\n")
+    }
+  }
+  veris <- post.proc(veris)
+  class(veris) <- c("verisr", class(veris))
   veris
 }
 
-# # Count the existance of a field in all records
-# #
-# # This function will count where the field is not null
-# #
-# # @param veris a verisr object
-# # @param field the field to count
-# # @export
-# # @examples
-# # \dontrun{
-# # hacking <- count(veris, "action.hacking")
-# # external <- count(veris, "actor.external")
-# # }
-# count <- function(veris, field) {
-#   sapply(field, function(f) {
-#     vars <- unlist(strsplit(f, ".", fixed=T))
-#     sum(unlist(lapply(veris, function(x) ifelse(is.null(x[[vars]]), 0, 1))))
-#   })
-# }
+#' Post process the veris object to add convenience fields.
+#' 
+#' Given a veris object this will populate several convenience fields
+#' like the victim.industry2 and industry3, 
+#' 
+#' @param veris the verisr object
+post.proc <- function(veris) {
+  # orgsize
+  small <- c("victim.employee_count.1 to 10", "victim.employee_count.11 to 100", 
+             "victim.employee_count.101 to 1000", "victim.employee_count.Small")
+  large <- c("victim.employee_count.1001 to 10000", "victim.employee_count.10001 to 25000", 
+             "victim.employee_count.25001 to 50000", "victim.employee_count.50001 to 100000", 
+             "victim.employee_count.Over 100000", "victim.employee_count.Large")
+  veris[ , victim.orgsize.Small := rowSums(veris[ ,small, with=F]) > 0]
+  veris[ , victim.orgsize.Large := rowSums(veris[ ,large, with=F]) > 0]
+  # victim.industry
+  veris[ , victim.industry2 := substring(unlist(veris[ ,"victim.industry", with=F], 
+                                                use.names=F), 1L, 2L)]
+  veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
+                                                use.names=F), 1L, 3L)]
+  # actor.partner.industry
+  veris[ , victim.industry2 := substring(unlist(veris[ ,"actor.partner.industry", with=F], 
+                                                use.names=F), 1L, 2L)]
+  veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
+                                                use.names=F), 1L, 3L)]
+  veris
+}
+
+#' Map VERIS fields to data type.
+#'
+#' Given a json schema for VERIS, this function will return a named vector
+#' where the name is the field and the value is the R mode string or "enum".
+#'
+#' @param schema the merged veris schema in json
+#' @keywords json
+parseProps <- function(schema, cur="", outvec=NULL) {
+  if ('items' %in% names(schema)) {
+    if ('enum' %in% names(schema[['items']])) {
+      vnames <- c(names(outvec), cur)
+      outvec <- c(outvec, "enum")
+      outvec <- setNames(outvec, vnames)
+    } else {
+      outvec <- parseProps(schema[['items']], cur, outvec)
+    }
+  } else if ('type' %in% names(schema)) {
+    if(schema[['type']]=='object') {
+      outvec <- parseProps(schema[['properties']], cur, outvec)
+    } else if ('enum' %in% names(schema)) {
+      vnames <- c(names(outvec), cur)
+      outvec <- c(outvec, "enum")
+      outvec <- setNames(outvec, vnames)
+    } else {
+      setto <- "character"
+      if(schema[['type']] == 'number') {
+        setto <- "double"
+      } else if (schema[['type']] == 'integer') {
+        setto <- "integer"
+      }
+      vnames <- c(names(outvec), cur)
+      outvec <- c(outvec, setto)
+      outvec <- setNames(outvec, vnames)
+    }
+  } else {
+    for(x in names(schema)) {
+      newcur <- ifelse(nchar(cur), paste(cur, x, sep='.'), x)
+      outvec <- parseProps(schema[[x]], newcur, outvec)
+    }
+  }
+  outvec
+}
+
+#' Create a list of all column names expected from JSON schema.
+#'
+#' Given a json schema for VERIS, this function will return a vector
+#' of columns names to be set in the verisr object.  This is a wrapper 
+#' around mkenums() which is a recursive function.  This will clean up
+#' some of the one-off things we do after reading the schema.
+#'
+#' @param schema the merged veris schema in json
+#' @keywords json
+veriscol <- function(schema) {
+  rawfields <- mkenums(schema)
+  gfields <- c("^ioc", "^impact", 
+               "attribute.confidentiality.data.amount", 
+               "asset.assets.amount")
+  clean <- rawfields[grep(paste(gfields, collapse="|"), rawfields, invert=T)]
+  wonkyvariety <- clean[grep('asset.assets.variety|attribute.confidentiality.data.variety', clean)]
+  wonkyamount <- sapply(strsplit(wonkyvariety, "[.]"), function(x) {
+    x[x=="variety"] <- "amount"
+    paste(x, collapse=".")
+  })
+  sort(c(wonkyamount, clean))
+}
+
+#' Create a raw list of all column names expected from JSON schema.
+#'
+#' Given a json schema for VERIS, this function will return a vector
+#' of columns names to be set in the verisr object. 
+#'
+#' @param schema the merged veris schema in json
+#' @keywords json
+mkenums <- function(schema, cur="", outvec=NULL) {
+  if ('items' %in% names(schema)) {
+    if ('enum' %in% names(schema[['items']])) {
+      outvec <- c(outvec, paste(cur, schema[['items']][['enum']], sep='.'))
+    } else {
+      outvec <- mkenums(schema[['items']], cur, outvec)
+    }
+  } else if ('type' %in% names(schema)) {
+    if(schema[['type']]=='object') {
+      outvec <- mkenums(schema[['properties']], cur, outvec)
+    } else if ('enum' %in% names(schema)) {
+      outvec <- c(outvec, paste(cur, schema[['enum']], sep='.'))
+    } else {
+      outvec <- c(outvec, cur)
+    }
+  } else {
+    for(x in names(schema)) {
+      newcur <- ifelse(nchar(cur), paste(cur, x, sep='.'), x)
+      outvec <- mkenums(schema[[x]], newcur, outvec)
+    }
+  }
+  outvec
+}
+
+#' Merges veriscol and parseProps in a single object.
+#'
+#' Given the schema object, will identify each column type to be 
+#' created into a data.table.
+#' 
+#' TODO: need to add the convenience fields in here.
+#'
+#' @param lschema the json schema object for VERIS
+#' @param a4 the a4 named vector for convenience fields
+getverisdf <- function(lschema, a4) {
+  # get a named vector of VERIS objects
+  # e.g. c("action.hacking.variety" = "enum")
+  vtype <- parseProps(lschema)
+  # get a vector of veris columns
+  # e.g. c("action.hacking.variety.Brute force", "action.hacking.variety.SQLi"...)
+  vfield <- veriscol(lschema)
+  out <- sapply(vfield, function(x) {
+    ret <- vtype[x]
+    if (is.na(ret)) {
+      temp <- unlist(strsplit(x, '[.]'))
+      base <- paste(temp[1:(length(temp)-1)], collapse='.')
+      ret <- vtype[base]
+    }
+    ifelse(ret=="enum", "logical", ret)
+  }, USE.NAMES=F)
+  out <- c(out, rep("logical", length(a4)))
+  setNames(out, c(vfield, names(a4)))
+}
+
+#' Return a dense list of only the VERIS variables and values in the JSON.
+#' 
+#' Given an incident in json format, it will process the file and 
+#' return a simple list object where each element is named with 
+#' the field name and the value is the value read in, or True if the
+#' field is an enumeration.
+#' 
+#' @param json the json object from reading in a file.
+#' @param cur the current field name as it is being built
+#' @param outlist the return value being passed internally
+nameveris.recurs <- function(json, vtype, cur=NULL, outlist=list()) {
+  # Three options:
+  #   named values (fields to loop through)
+  #   looped variety object (asset.assets or data variety)
+  #   a value itself
+  
+  # if named values, loop through each of the children and recurse to myself
+  if (length(names(json))>0) {
+    for(x in names(json)) {
+      curname <- ifelse(is.null(cur), x, paste(cur, x, sep='.'))
+      outlist <- nameveris.recurs(json[[x]], vtype, cur=curname, outlist)
+    }
+  # if one of the repeated values, handle uniquely
+  } else if (cur %in% c('asset.assets', 'attribute.confidentiality.data')) {
+    for(x in json) {
+      if ('variety' %in% names(x)) {
+        curname = paste(cur, 'variety', x[['variety']], sep='.')
+        outlist[curname] <- TRUE
+        if ('amount' %in% names(x)) {
+          curname = paste(cur, 'amount', x[['variety']], sep='.')
+          outlist[curname] <- x[['amount']]
+        }
+      }
+    }
+  # else this is field to assign, assign it
+  } else {
+    if (cur %in% names(vtype)) {
+      if (vtype[cur] == "enum") {
+        for(x in json) {
+          curname = paste(cur, x, sep='.')
+          outlist[[curname]] = TRUE
+        }
+      } else {
+        if (!mode(json) %in% c("character", "numeric")) {
+          cat('mode of', cur, "is", mode(json), "\n")
+        }
+        outlist[[cur]] = json
+      }
+    } else if (cur %in% c("actor.unknown", "action.unknown")) {
+      outlist[[sub('u', 'U', cur)]] <- TRUE
+    # } else {
+      # warning(paste("Invalid data in JSON, dropping value of", cur))
+    }
+  }
+  outlist
+}
+
+#' Return a dense and complete list of VERIS variables and values
+#' 
+#' Given an incident in json format, it will process the file and 
+#' return a simple list object where each element is named with 
+#' the field name and the value is the value read in, or True if the
+#' field is an enumeration.
+#' 
+#' @param json the json object from reading in a file.
+#' @param the a4 object from geta4names()
+nameveris <- function(json, a4, vtype) {
+  olist <- nameveris.recurs(json, vtype)
+  # start simple, with the actor, action, asset and attribute fields
+  for(a4name in names(a4)) {
+    if (any(grepl(paste0('^', a4[a4name]), names(olist)))) {
+      olist[[a4name]] = TRUE
+    }
+  }  
+  olist
+}
+
+#' Convenience function for the a4 names and values
+#' 
+#' This returns a named vector where the names are the column names 
+#' in the final verisr data table and the valus are suitable for using
+#' in a regex in the existing column names.  
+geta4names <- function() {
+  convenience <- function(nm) {
+    out <- tolower(nm)
+    setNames(tolower(nm), nm)
+  }
+  actor <- convenience(paste('actor', 
+                             c('External', 'Internal', 'Partner', 'Unknown'), 
+                             sep="."))
+  action <- convenience(paste('action', 
+                              c('Malware', 'Hacking', 'Social', 'Physical', 
+                                'Misuse', 'Error', 'Environmental', 'Unknown'), 
+                              sep="."))
+  attribute <- convenience(paste('attribute', 
+                                 c('Confidentiality', 'Integrity', 'Availability'), 
+                                 sep="."))
+  assetmap <- c("S "="Server", "N "="Network", "U "="User Dev", "M "="Media", 
+                "P "="Person", "T "="Kiosk/Term", "Un"="Unknown")
+  asset <- setNames(paste('asset.assets.variety', names(assetmap), sep='.'),
+                    paste('asset.variety', assetmap, sep='.'))
+  c(actor, action, asset, attribute)  
+}
+
+
+counto <- function(olist) {
+  cnm <- names(olist)
+  found.enum <- unlist(lapply(c('action', 'actor', 'attribute'), function(x) {
+    paste(x, unique(getnth(cnm[grep(paste0("^", x), cnm)])), sep=".")
+  }))
+  for(x in found.enum) {
+    olist[[x]] <- TRUE
+  }
+  assetmap <- c("S "="Server", "N "="Network", "U "="User Dev", "M "="Media", 
+                "P "="Person", "T "="Kiosk/Term", "Un"="Unknown")
+  outs <- cnm[grep('^asset.assets.variety', cnm)]
+  if (length(outs) > 0) {
+    found.enum <- paste('asset.assets', assetmap[substr(getlast(outs), 1,2)], sep=".")
+    for(x in found.enum) {
+      olist[[x]] <- TRUE
+    }
+  }
+  # TODO : need to add more fields for convenience things like:
+  # victim.industry2
+  # victim.industry3
+  # victim.orgsize, (Small/Large)
+  # victim.region
+  # victim.subregion
+  olist
+}
+
+#' Get the last element from a column name
+#' 
+#' Givn a vector with one or more column names (veris fields), this will
+#' return the last string in the name, as it is seperated by [.].
+#' 
+#' @param nm the vector of column names
+getlast <- function(nm) {
+  sapply(nm, function(x) {
+    temp <- unlist(strsplit(x, '[.]'))
+    temp[length(temp)]
+  })
+}
+
+#' Get the nth element from a column name
+#' 
+#' Givn a vector with one or more column names (veris fields), this will
+#' return the nth string in the name, as it is seperated by [.].
+#' 
+#' @param nm the vector of column names
+#' @param which the nth vlue to return
+getnth <- function(nm, which=2) {
+  sapply(nm, function(x) {
+    temp <- unlist(strsplit(x, '[.]'))
+    temp[2]
+  })
+}
 
 #' Get a vector of values from an enumeration
 #'
 #' This will collect the values for an enumation 
+#' 
+#' Note there are some special values that can be set as the enumeration
+#' that are not obvious. :
+#' * actor, action, attribute: will all return the next level down.  For example, just querying for "action" will return "malware", "hacking", and so on.
+#' * asset.assets: will return the type of assets, "Server", "Network, "User Dev" and so on
+#' * victim.industry2: will return a short label of industries based on 2 values of NAICS code.
+#' * victim.industry3: will return a short label of industries based on 3 values of NAICS code.
 #'
 #' @param veris a verisr object
 #' @param enum the field to count
@@ -61,115 +423,37 @@ json2veris <- function(dir=".") {
 #' hacking <- getenum(veris, "action.hacking.variety")
 #' external <- getenum(veris, "actor.external.motive")
 #' }
-getenum <- function(veris, enum, primary=NULL, secondary=NULL, 
-                    filter=NULL, add.n=F, add.freq=F, fillzero=T) {
-  if(!missing(primary)) {
-    return(getenumby(veris=veris, enum=enum, primary=primary, 
-                     secondary=secondary, filter=filter, add.n=add.n,
-                     add.freq=add.freq, fillzero=fillzero))
+getenum.no <- function(veris, enum, filter=NULL, add.n=F, add.freq=F) {
+  if (missing(filter)) {
+    filter <- rep(T, nrow(veris))
+  } else if (length(filter) != nrow(veris)) {
+    warning(paste0("filter is not same length (", length(filter),
+                   ") as object (", nrow(veris), ")."))
+    return(NULL)
   }
-  # get the internal list for the enumeration
-  int.enum <- getenumlist(veris, enum)
-  # and apply the filter, it one was passed in
-  if (!is.null(filter)) {
-    int.enum <- ifelse(filter, int.enum, NA)
+  
+  # get names from the veris object
+  cnames <- colnames(veris)
+  # extract by the enumeration
+  # if field name exists as is, return it, else search.
+  if(any(grepl(paste0('^', enum, "$"), cnames))) {
+    warning("need to return single field here")
+  } else {
+    # only match where there are one level of enumerations 
+    # after the requested enum
+    gkey <- paste0("^", enum, ".[^.]+$")
+    thisn <- cnames[grep(gkey, cnames)]
+    ret <- setNames(colSums(veris[filter ,thisn, with=F]), getlast(thisn))
+    ret <- ret[ret>0]
+    outdf <- data.table(enum=names(ret), x=ret)
+    n <- sum(rowSums(veris[filter ,thisn, with=F]) > 0)
+    if (add.n) outdf$n <- n
+    if (add.freq) outdf$freq <- outdf$x/n
+    outdf <- outdf[order(-rank(x), enum)]
+    outdf$enum <- factor(outdf$enum, levels=outdf$enum, ordered=T)
+    outdf
   }
-  # count and aggreagte it
-  count.enum <- table(unlist(int.enum))
-  if (any(dim(count.enum) == 0)) {
-    warning(paste("No values found for enum \"", enum, "\"", sep=""))
-    return(data.frame())
-  }
-  # convert to data.frame
-  enum.df <- data.frame(enum=names(count.enum), x=as.vector(count.enum))
-  # order it
-  enum.df <- enum.df[with(enum.df, order(-x)), ]
-  # reset the row names
-  row.names(enum.df) <- 1:nrow(enum.df)
-  # make the enum a factor
-  enum.df$enum <- factor(enum.df$enum, levels=rev(enum.df$enum), ordered=T)
-  if (add.n | add.freq) {
-    # get the count of non-null values
-    n <- sum(sapply(int.enum, function(x) {
-      # it has length and is.na, return 0, else 1
-      ifelse(length(x)==1, ifelse(is.na(x), 0, 1) ,1) })
-    )
-  }
-  if (add.n) {
-    enum.df$n <- n
-  }
-  if (add.freq) {
-    enum.df$freq <- round(enum.df$x/n, 3)
-  }
-  enum.df
 }
-
-#' This will return a verisr filter object.
-#' 
-#' Get a filter given a list of "and" combinations and/or a list 
-#' of "or" combinations.
-#' Note: industry can be industryN
-#' values can be "$exists" for that field being present
-#' 
-#' @param veris a verisr object
-#' @param or list of criteria matching "or"
-#' @param and list of criteria matching "and"
-#' @param or.not list of criteria matching "or not"
-#' @param and.not list of criteria matching "and not"
-#' @export
-#' @examples
-#' \dontrun{
-#' #tbd
-#' hacking <- getenum(veris, "action.hacking.variety")
-#' external <- getenum(veris, "actor.external.motive")
-#' }
-getfilter <- function(veris, and=NULL, or=NULL, or.not=NULL, and.not=NULL) {
-  # this will return a matrix, one row for each
-  # element in the list passed in, with a match
-  # of the value in that list
-  simple.match <- function(either) {
-    sapply(names(either), function(x) {
-      unlist(sapply(getenumlist(veris, x), function(y) {
-        if (either[[x]]=="$exists") {
-          match.list <- as.logical(sum(!is.na(y)))
-        } else {
-          # note this means any vector is treated as an "or"
-          match.list <- as.logical(sum(ifelse(either[[x]] %in% y, TRUE, FALSE)))
-        }
-        match.list
-      }))
-    })
-  }
-  retval <- NULL
-  if (!is.null(or)) {
-    or.retval <- as.logical(apply(simple.match(or), 1, sum))
-  } else {
-    or.retval <- rep(T, length(veris))
-  }
-  if (!is.null(and)) {
-    #if all match, include the record
-    and.retval <- ifelse(apply(simple.match(and), 1, sum)==length(and), TRUE, FALSE)
-  } else {
-    and.retval <- rep(T, length(veris))
-  }
-  if (!is.null(and.not)) {
-    # if all match, exclude the record
-    and.not.retval <- ifelse(apply(simple.match(and.not), 1, sum)==length(and.not), FALSE, TRUE)
-  } else {
-    and.not.retval <- rep(T, length(veris))    
-  }
-  if (!is.null(or.not)) {
-    #if any are true, set to false (!) 
-    or.not.retval <- !as.logical(apply(simple.match(or.not), 1, sum))
-  } else {
-    or.not.retval <- rep(T, length(veris))
-  }
-  # defaulting to an AND match between them
-  sendlist <- (or.retval & and.retval & or.not.retval & and.not.retval)
-  class(sendlist) <- "verisr.filter"
-  sendlist
-}  
-
 
 #' Get a count of enumerations values by some other enumeration
 #'
@@ -186,294 +470,56 @@ getfilter <- function(veris, and=NULL, or=NULL, or.not=NULL, and.not=NULL) {
 #' @export
 #' @examples
 #' \dontrun{
-#' hacking <- getenum(veris, "action.hacking.variety")
-#' external <- getenum(veris, "actor.external.motive")
+#' hacking <- getenumby(veris, "action", "asset.variety", fillzero=T)
 #' }
-getenumby <- function(veris, enum, primary, secondary=NULL, filter=NULL, add.n=F, add.freq=F, fillzero=T) {
-  if(length(by) > 2) {
-    warning("by variable has more than 2, only taking first 2")
+getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL, 
+                      add.n=F, add.freq=F, fillzero=T) {
+  if (missing(filter)) {
+    filter <- rep(T, nrow(veris))
+  } else if (length(filter) != nrow(veris)) {
+    warning(paste0("filter is not same length (", length(filter),
+                   ") as object (", nrow(veris), ")."))
+    return(NULL)
   }
-  # get the internal main enum
-  main <- getenumlist(veris, enum)
-  # make sure we have something in this list
-  if (!any(!is.na(unlist(main)))) {
-    stop(paste("Primary enumeration \"", enum, "\": no incidents matching", sep=""))
+  enum <- c(enum, primary, secondary)
+  gkey <- paste0("^", enum, ".[^.]+$")
+  savethisn <- thisn <- lapply(gkey, function(x) cnames[grep(x, cnames)])
+  thisn$x <- 0
+  outdf <- as.data.table(expand.grid(thisn))
+  cnm <- colnames(outdf)[1:(ncol(outdf)-1)]
+  for(i in seq(nrow(outdf))) {
+    foo1 <- outdf[i, cnm, with = F]
+    foo2 <- unlist(foo1)
+    this.comp <- as.character(foo2)
+    foo3 <- veris[filter, this.comp, with=F]
+    foo4 <- rowSums(foo3)
+    count <- sum(foo4 == length(enum))
+    # cat("comparing:", paste(this.comp, collapse=" > "), "=", count, "\n")
+    outdf[i, x:=count]
   }
-  # get the primary enum
-  penum <- getenumlist(veris, primary)
-  if (!any(!is.na(unlist(penum)))) {
-    stop(paste("Primary enumeration \"", primary, "\": no incidents matching", sep=""))
+  for(column in cnm) {
+    tempcol <- getlast(as.character(unlist(outdf[ , column, with=F])))
+    outdf[ , column:=tempcol, with=F]
   }
-  # see if there is a secondary and prepare it (or null list if not)
-  if (!is.null(secondary)) {
-    senum <- getenumlist(veris, secondary)    
-    if (!any(!is.na(unlist(senum)))) {
-      stop(paste("Secondary enumeration \"", secondary, "\": no incidents matching", sep=""))
-    }
-  } else {
-    senum <- rep(list(NULL), length(main))
-  }
-  ## apply the filter if one was passed in
-  if (!is.null(filter)) {
-    main <- ifelse(filter, main, NA)
-    penum <- ifelse(filter, penum, NA)
-    senum <- ifelse(filter, senum, NA)
-    if (!any(!is.na(unlist(main)))) {
-      stop(paste("Primary enumeration \"", enum, "\": no incidents matching after filter applied", sep=""))
-    }
-    if (!any(!is.na(unlist(penum)))) {
-      stop(paste("Primary enumeration \"", primary, "\": no incidents matching after filter applied", sep=""))
-    }
-    if (!is.null(secondary)) {
-      if (!any(!is.na(unlist(senum)))) {
-        stop(paste("Secondary enumeration \"", secondary, "\": no incidents matching", sep=""))
-      }
-    }
-  }
-  
-  full.df <- do.call(rbind, lapply(seq(length(main)), function(index) {
-    # skip if we have any NA values across the board.
-    if (!any(is.na(c(main[[index]], 
-                     penum[[index]],
-                     senum[[index]])))) {
-      if (is.null(secondary)) {
-        expand.grid(enum=unlist(main[[index]]), 
-                    primary=unlist(penum[[index]]))
-      } else {
-        expand.grid(enum=unlist(main[[index]]), 
-                    primary=unlist(penum[[index]]),
-                    secondary=unlist(senum[[index]]))
-      }
-    }      
-  }))
-  full.df$x <- 1
-  retval <- aggregate(x ~ ., data=full.df, FUN=sum)
-  # now that we have a data frame
-  # fill with zero's?
-  if(fillzero) {
-    if (is.null(secondary)) {
-      zerofill <- expand.grid(enum=unique(retval$enum), 
-                              primary=unique(retval$primary))
-    } else {
-      zerofill <- expand.grid(enum=unique(retval$enum), 
-                              primary=unique(retval$primary),
-                              secondary=unique(retval$secondary))
-    }
-    retval <- merge(retval, zerofill, all=T)
-    retval$x[is.na(retval$x)] <- 0
-  }
-  sort.df <- aggregate(x ~ enum, data=retval, FUN=sum)
-  sort.enum <- as.character(sort.df$enum[with(sort.df, order(x))])
-  retval$enum <- factor(retval$enum, levels=sort.enum, ordered=T)
-  if (add.n | add.freq) {
-    pre.n <- sapply(seq(length(main)), function(index) {
-      ifelse(!any(is.na(c(main[[index]],penum[[index]], senum[[index]]))), 1, 0)
-    })
-    n <- sum(pre.n)
-  }
-  if (add.n) {
-    retval$n <- n
-  }
-  if (add.freq) {
-    retval$freq <- round(retval$x/n, 3)
-  }
-  
-  retval
+  extra.names <- NULL
+  if (length(enum)>1) extra.names <- paste0('enum', seq((length(enum)-1)))
+  setnames(outdf, c('enum', extra.names, 'x'))
+  n <- sum(rowSums(veris[filter ,unlist(savethisn), with=F]) > 0)
+  if (add.n) outdf$n <- n
+  if (add.freq) outdf$freq <- outdf$x/n
+  # name the columns... enum enum1 enum2 (?)
+  # print(outdf)
+  #outdf <- outdf[order(-rank(x), enum)]
+  #outdf$enum <- factor(outdf$enum, levels=outdf$enum, ordered=T)
+  outdf
 }
 
-# save_off <- fucntion(veris, enum, by)
-#   # get the internal list for the enumeration
-#   primary.enum <- getenumlist(veris, enum)
-#   #secondary.df <- getenum(veris, by)
-#   if(by=="industry2") {
-#     secondary.enum <- getindustry(veris, 2)
-#   } else {
-#     secondary.enum <- getenumlist(veris, by)
-#   }
-#   by.list <- unique(unlist(secondary.enum))
-#   by.list <- by.list[!is.na(by.list)]
-#   rez <- do.call(rbind, lapply(by.list, function(x) {
-#     local.filter <- getsimfilter(secondary.enum, x)
-#     pri.count <- table(unlist(primary.enum[local.filter]))
-#     if (length(pri.count)) {
-#       int.df <- data.frame(enum=names(pri.count), 
-#                            x=as.vector(pri.count), 
-#                            primary=x)      
-#     } else {
-#       int.df <- NULL
-#     }
-#     int.df
-#   }) )
-#   if(by=="industry2") {
-#     rez$primary <- merge(rez, industry2, by.x="primary", by.y="code")$title
-#   }
-#   rez
-# }  
-#foo <-getenumby(vcdb, "action.hacking.variety", "actor.external.variety")
-#foo <-getenumby(vcdb, "action.hacking.variety", "industry2")
-#ggplot(foo, aes(enum, x)) + geom_bar(stat="identity") + facet_wrap( ~ primary, ncol=2) + coord_flip() + theme_bw()
-# 
-# getindustry <- function(veris, len=2) {
-#   int.enum <- getenumlist(veris, "victim.industry")
-#   sapply(int.enum, function(x) {
-#     sapply(x, function(y) {
-#       ret.val <- NA
-#       if (nchar(y) > len) {
-#         ret.val <- substr(y, 1, len)
-#         if (ret.val==rep("0", len)) {
-#           ret.val <- NA
-#         }
-#       } 
-#       ret.val      
-#     })
-#   })  
-# }
-
-#' return a list matching vcdb ordering and length with requested object
-#' 
-#' This will iterate through the veris object and return
-#' a list of matches.  This is intented to maintain the orginal
-#' indexes of the veris object so further manipulation can be done.
-#' 
-#' Note: Can do a special "industryN" request and it will chop
-#' off the industry at the N value or return same length of zeros
-#' if it isn't long enough.
-#' 
-#' @param veris a verisr object
-#' @param enum the field to count
-#' @export
-getenumlist <- function(veris, enum) {
-  # if the veris object has null names and yet length
-  # it is an array, and we simply want to step into
-  # and through it.  The top level veris object
-  # is an array, as is things like victim and assets
-  # and data variety
-  if(is.null(names(veris)) & length(veris)) {
-    return(lapply(veris, getenumlist, enum))
-  }
-  # now we are in the meat of the function
-  # and we should have either a full slice
-  # or a partial slice of a veris incident
+# can I create a recursive function?
+enumby.recurs <- function(veris, thisn, filter) {
   
-  # look at the enum passed in, want to 
-  # grab the first ("tag") and concatenate the rest
-  vars <- unlist(strsplit(enum, "[.]"))
-  tag <- vars[1]
-  therest <- paste(vars[-1], collapse='.')
-  # if the veris object is null at "tag", return NA
-  if (is.null(veris[[tag]])) {
-    retval <- NA
-  } else if (therest == "") {
-    # else if we are at the end of our enum, return the value?
-    if (length(veris[[tag]])==0) {
-      retval <- NA
-    }
-    # if we have names return those
-    # it's an easy way to count actions, actors, etc.
-    these.names <- names(veris[[tag]])
-
-    #cat("the rest is blank, names:", these.names, "null:", is.null(these.names), "\n")
-    if (tag=="assets") {
-      assetmap <- c("S"="Server", "N"="Network", "U"="User Dev", "M"="Media", 
-                    "P"="Person", "T"="Kiosk/Term", "Unknown"="Unknown")
-      retval <- unique(unlist(sapply(veris[[tag]], function(asset) {
-        myasset <- ifelse(asset$variety=="Unknown", "Unknown", substr(asset$variety, 1, 1))
-        myamount <- 1 # not counting more than one here
-        # myamount <- ifelse(is.null(asset$amount), 1, asset$amount)
-        rep(assetmap[[myasset]], myamount)
-        
-      })))
-    } else if (!is.null(these.names)) {
-      retval <- these.names
-      # note to self, this is causing the getMatrix functions 
-      # to return NA, as the names of the return vector are blank
-#    } else if (is.null(these.names)) {
-#      retval <- NA
-    } else {
-      retval <- veris[[tag]]
-    }
-  } else {
-    # else we need to continue to "drill down" into the veris object
-    # with the rest of the enum being quieried
-    # passing it back to self so it can parse through arrays
-    # and use the same logic to continue parsing
-    #
-    # but before we do, let's check for some unique variables
-    # like "industry*" where * is a length to chop
-    if (grepl("^industry\\d$", therest, perl=T)) {
-      # figure out the length of industry to return
-      ind.len <- substr(therest, 9, 9)
-      retval <- getenumlist(veris[[tag]], "industry")
-      retval <- lapply(retval, function(x) {
-        i <- substr(x, 1, ind.len)
-        ifelse(nchar(i)==ind.len, i, paste(rep("0", ind.len), collapse=""))
-      })
-    } else if (tag=="assets" & therest=="variety") {
-      retval <- unlist(sapply(veris[[tag]], getVarietyAmount))
-    } else if (tag=="data" & therest=="variety") {
-      retval <- unlist(getenumlist(veris[[tag]], therest))
-    } else if (tag=="loss" & therest=="variety") {
-      # TODO: impact could use attention
-      retval <- unlist(sapply(veris[[tag]], getVarietyAmount))
-    } else {
-      retval <- getenumlist(veris[[tag]], therest)      
-    }
-  }
-  retval
 }
   
 
-#' Internal: Expand variety
-#' 
-#' This will expand all of the "variety" fields by the amount
-#' specified in the "amount" field of the same level object.
-#' 
-#' @param x a slice of a veris a verisr object
-getVarietyAmount <- function(x) {
-  variety <- x[['variety']]
-  #if ('amount' %in% names(x)) {
-  #  amount <- ifelse(x[['amount']]>1, x[['amount']], 1)
-  #  variety <- rep(variety, amount)
-  #}
-  variety
-}
-
-#' Internal: Get fields names  
-#' 
-#' This will grab all the field names from a veris object
-#' 
-#' @param veris a verisr object
-getvnames <- function(veris) {
-  # all field names
-  #vnames <- sort(unique(names(unlist(veris))))
-  # remove the replicated numbered ones
-  #vnames[grep("\\D\\d$", vnames, perl=T, invert=T)]
-  sort(unique(unlist(getvnamelong(veris))))
-}
-
-#' Internal: Get fields names using a long method
-#' 
-#' This will grab all the field names from a veris object
-#' 
-#' @param veris a verisr object
-#' @param curname used to maintain state internally
-getvnamelong <- function(veris, curname = NULL) {
-  if(is.null(names(veris)) & length(veris)) {
-    return(lapply(veris, getvnamelong, curname))
-  }
-  realname <- function(n) {
-    if (is.null(curname)) n else paste0(curname, ".", n)
-  }
-  foo <- lapply(names(veris), function(x) {
-    if (mode(veris[[x]]) %in% c("character", "numeric", "logical")) {
-      ret <- realname(x)
-    } else {
-      ret <- getvnamelong(veris[[x]], realname(x))      
-    }
-    ret
-  })
-  foo
-}
 
 #' Displays a useful description of a verisr object
 #' 
@@ -484,55 +530,57 @@ getvnamelong <- function(veris, curname = NULL) {
 #' @export
 summary.verisr <- function(object, ...) {
   veris <- object
-  cat(paste(length(veris), "incidents in this object.\n"))
+  cat(paste(nrow(veris), "incidents in this object.\n"))
   actor <- getenum(veris, "actor", add.freq=T)
   action <- getenum(veris, "action", add.freq=T)
-  asset <- getenum(veris, "asset.assets", add.freq=T)
+  asset <- getenum(veris, "asset.variety", add.freq=T)
   attribute <- getenum(veris, "attribute", add.freq=T)
-  actor.factor <- factor(unlist(apply(actor, 1, function(x) { rep(x[['enum']], x[['x']])})))
-  action.factor <- factor(unlist(apply(action, 1, function(x) { rep(x[['enum']], x[['x']])})))
-  asset.factor <- factor(unlist(apply(asset, 1, function(x) { rep(x[['enum']], x[['x']])})))
-  attr.factor <- factor(unlist(apply(attribute, 1, function(x) { rep(x[['enum']], x[['x']])})))
-  cat("\nActor:\n")
-  print(summary(actor.factor))
-  cat("\nAction:\n")
-  print(summary(action.factor))
-  cat("\nAsset:\n")
-  print(summary(asset.factor))
-  cat("\nAttribute:\n")
-  print(summary(attr.factor))
+  outlist <- list(actor=actor, action=action, asset=asset, attribute=attribute)
+  full <- lapply(names(outlist), function(n) {
+    thisdf <- outlist[[n]]
+    ret <- unlist(lapply(seq(nrow(thisdf)), function(i) {
+      rep(thisdf$enum[i], thisdf$x[i])
+    }))
+    ret
+  })
+  maxline <- max(sapply(full, length))
+  temp.out <- as.data.frame(lapply(full, function(x) {
+    c(as.character(x), rep(NA, maxline-length(x)))
+  }))
+  names(temp.out) <- names(outlist)
+  outs <- summary(temp.out, na.rm=T)
+  outs[grep("^NA\'s", outs)] <- ""
+  outs
 }
 
-#' Displays a four panel barplot of a verisr object
-#' 
-#' @param object veris object to summarise
-#' @param ... other arguments ignored (for compatibility with generic)
-#' @keywords internal
-#' @method plot verisr
-#' @export
-plot.verisr <- function(x, y, ...) {
-#  x <- object
-  actor <- getenum(x, "actor", add.freq=T)
-  action <- getenum(x, "action", add.freq=T)
-  asset <- getenum(x, "asset.assets", add.freq=T)
-  attribute <- getenum(x, "attribute", add.freq=T)
-  # save off paramteres before messing with them
-  savemfrow <- par()$mfrow
-  savelas <- par()$las
-  savemar <- par()$mar
-  # and mess with them 
-  par(las=2) # make label text perpendicular to axis
-  par(mar=c(2.5,5.6,2.1,1.1)) # increase y-axis margin.
-  par(mfrow=c(2,2))
-  # four bar plots
-  barplot(actor$freq*100, names.arg=actor$enum, horiz=T, main="Actor")
-  barplot(action$freq*100, names.arg=action$enum, horiz=T, main="Action")
-  barplot(asset$freq*100, names.arg=asset$enum, horiz=T, main="Asset")
-  barplot(attribute$freq*100, names.arg=attribute$enum, horiz=T, main="Attribute")
-  par(las=savelas)
-  par(mfrow=savemfrow)
-  par(mar=savemar)
-}
+  # don't think I need the mode stuff.
+#   vmode <- sapply(veris[ ,thisn, with=F], mode)
+#   # check one-offs
+#   if(enum %in% c('actor', 'action', 'attribute')) {
+#     thisn <- thisn[vmode=="logical"]
+#     nth <- getnth(thisn, 2)
+#     preout <- sapply(unique(nth), function(x) {
+#       sum(rowSums(veris[ ,thisn[nth %in% x], with=F]*1)>0)
+#     })
+#   } else if(enum=='asset.assets') {
+#     assetmap <- c("S"="Server", "N"="Network", "U"="User Dev", "M"="Media", 
+#                   "P"="Person", "T"="Kiosk/Term", "Unknown"="Unknown")
+#   } else {
+    # test for no names returning
+#   whichwhat <- table()
+#   print(whichwhat)
+#   if(length(whichwhat)>1) {
+#     # multiple data types found with key, return an unknown
+#     warning(paste0("Mixed field types found (", 
+#                      paste(names(whichwhat), collapse=", "), 
+#                      ") for request \"", enum, "\""))
+#     } else {
+#     }
+#     
+#   }
+#     
+  # can we use the vtype field?
+
 
 #' Metadata for 2-digit NAICS industry classification
 #'
@@ -564,3 +612,46 @@ NULL
 #' @references \url{www.veriscommunity.net}
 #' @keywords data
 NULL
+
+# devtools::install_github("hadley/dplyr", build_vignettes = FALSE)
+# devtools::install_github("hadley/devtools", build_vignettes = FALSE)
+# library(devtools)
+# devtools::install_github(c("rstudio/shiny", "hadley/dplyr", 
+#                            "rstudio/ggvis"), build_vignettes = FALSE)
+# alldir <- list.dirs("~/Documents/json/newfinal/2013/final", recursive=F)
+# alldir <- c(alldir, list.dirs("~/Documents/json/newfinal/2014/final", recursive=F))
+# alldir <- c(alldir, "~/Documents/github/VCDB/data/json")
+# 
+# 93  "string"
+# 35  "object"
+# 34  "array", 
+# 11  "number"
+# 9  "integer"
+# 4  "array"
+
+# Using old verisr:
+# > dir <- '~/Documents/github/VCDB/data/json'
+# > system.time(vcdb <- json2veris(dir))
+# user  system elapsed 
+# 1.637   0.300   2.419 
+# > system.time(vmat <- veris2matrix(vcdb))
+# user  system elapsed 
+# 15.490   0.043  15.532 
+# > system.time(out <- getenum(vcdb, 'attribute.confidentiality.data.variety'))
+# user  system elapsed 
+# 0.615   0.003   0.619 
+# 
+# Using this:
+# > system.time(vcdb <- json2veris(dir))
+# user  system elapsed 
+# 8.616   0.153   8.766
+# > system.time(out <- getenum(vcdb, 'attribute.confidentiality.data.variety'))
+# user  system elapsed 
+# 0.005   0.000   0.004 
+
+# library(rjson)
+# schema <- fromJSON(file="~/Documents/json/newfinal/verisc-merged.json")
+# vtype = parseProps(schema)
+# vfield = veriscol(schema)
+# save(vtype, vfield, file="data/schema1.3.rda")
+
