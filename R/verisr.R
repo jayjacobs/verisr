@@ -68,6 +68,8 @@ json2veris <- function(dir=".", schema=NULL) {
     else if (vft[i]=="double") rep(NA_real_, numfil)
   }))
   setnames(veris, names(vft))
+  # get a text progress bar going
+  pb <- txtProgressBar(min = 0, max = length(jfiles), style = 3)
   # in each file, pull out the values and fill in the data table
   for(i in seq_along(jfiles)) {
     json <- fromJSON(file=jfiles[i], method='C')
@@ -85,10 +87,9 @@ json2veris <- function(dir=".", schema=NULL) {
       }
       
     }
-    if(i %% 1000 == 0) {
-      cat("Parsing record", i, "of", length(jfiles), "\n")
-    }
+    setTxtProgressBar(pb, i)
   }
+  close(pb)
   veris <- post.proc(veris)
   class(veris) <- c("verisr", class(veris))
   veris
