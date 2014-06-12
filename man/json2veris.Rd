@@ -2,7 +2,7 @@
 \alias{json2veris}
 \title{Read in all the VERIS incidents (JSON files) in a given directory.}
 \usage{
-json2veris(dir = ".", schema = NULL)
+json2veris(dir = ".", schema = NULL, progressbar = F)
 }
 \arguments{
   \item{dir}{the directory to list through.  This may be a
@@ -11,6 +11,9 @@ json2veris(dir = ".", schema = NULL)
 
   \item{schema}{a full veris schema with enumerations
   included.}
+
+  \item{progressbar}{a logical value to show (or not show)
+  a progress bar}
 }
 \description{
 This function will iterate through all the JSON files

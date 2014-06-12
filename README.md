@@ -22,10 +22,6 @@ vcdb.dir <- "../VCDB/data/json/"
 vcdb <- json2veris(vcdb.dir)
 ```
 
-    ## Parsing record 1000 of 3527 
-    ## Parsing record 2000 of 3527 
-    ## Parsing record 3000 of 3527
-
 What json2veris() returns is a plain data.table object, which enables you (the developer) to work directly with the data.
 
 ``` {.r}
@@ -175,71 +171,20 @@ One rather fun feature of the lastest version is the ability to query for an enu
 
 ``` {.r}
 a2 <- getenumby(vcdb, c("action", "asset.variety"))
-a2
+head(a2)
 ```
 
-    ##              enum      enum1   x    n      freq
-    ##  1:       Malware     Server 218 3527 0.0618089
-    ##  2:       Hacking     Server 978 3527 0.2772895
-    ##  3:        Social     Server 195 3527 0.0552878
-    ##  4:      Physical     Server  38 3527 0.0107740
-    ##  5:        Misuse     Server 368 3527 0.1043380
-    ##  6:         Error     Server 235 3527 0.0666289
-    ##  7: Environmental     Server   4 3527 0.0011341
-    ##  8:       Unknown     Server  52 3527 0.0147434
-    ##  9:       Malware    Network  89 3527 0.0252339
-    ## 10:       Hacking    Network  97 3527 0.0275021
-    ## 11:        Social    Network  90 3527 0.0255174
-    ## 12:      Physical    Network   3 3527 0.0008506
-    ## 13:        Misuse    Network   4 3527 0.0011341
-    ## 14:         Error    Network  10 3527 0.0028353
-    ## 15: Environmental    Network   1 3527 0.0002835
-    ## 16:       Unknown    Network   0 3527 0.0000000
-    ## 17:       Malware   User Dev 233 3527 0.0660618
-    ## 18:       Hacking   User Dev 210 3527 0.0595407
-    ## 19:        Social   User Dev 199 3527 0.0564219
-    ## 20:      Physical   User Dev 430 3527 0.1219166
-    ## 21:        Misuse   User Dev  48 3527 0.0136093
-    ## 22:         Error   User Dev  92 3527 0.0260845
-    ## 23: Environmental   User Dev   0 3527 0.0000000
-    ## 24:       Unknown   User Dev  11 3527 0.0031188
-    ## 25:       Malware      Media   0 3527 0.0000000
-    ## 26:       Hacking      Media   5 3527 0.0014176
-    ## 27:        Social      Media  16 3527 0.0045364
-    ## 28:      Physical      Media 233 3527 0.0660618
-    ## 29:        Misuse      Media 146 3527 0.0413950
-    ## 30:         Error      Media 490 3527 0.1389283
-    ## 31: Environmental      Media   0 3527 0.0000000
-    ## 32:       Unknown      Media  51 3527 0.0144599
-    ## 33:       Malware     Person 194 3527 0.0550043
-    ## 34:       Hacking     Person 189 3527 0.0535866
-    ## 35:        Social     Person 257 3527 0.0728665
-    ## 36:      Physical     Person   9 3527 0.0025517
-    ## 37:        Misuse     Person  39 3527 0.0110576
-    ## 38:         Error     Person   5 3527 0.0014176
-    ## 39: Environmental     Person   0 3527 0.0000000
-    ## 40:       Unknown     Person   1 3527 0.0002835
-    ## 41:       Malware Kiosk/Term   4 3527 0.0011341
-    ## 42:       Hacking Kiosk/Term   7 3527 0.0019847
-    ## 43:        Social Kiosk/Term   4 3527 0.0011341
-    ## 44:      Physical Kiosk/Term  70 3527 0.0198469
-    ## 45:        Misuse Kiosk/Term   3 3527 0.0008506
-    ## 46:         Error Kiosk/Term   0 3527 0.0000000
-    ## 47: Environmental Kiosk/Term   0 3527 0.0000000
-    ## 48:       Unknown Kiosk/Term   0 3527 0.0000000
-    ## 49:       Malware    Unknown  23 3527 0.0065211
-    ## 50:       Hacking    Unknown 125 3527 0.0354409
-    ## 51:        Social    Unknown  13 3527 0.0036859
-    ## 52:      Physical    Unknown  17 3527 0.0048200
-    ## 53:        Misuse    Unknown  68 3527 0.0192798
-    ## 54:         Error    Unknown  19 3527 0.0053870
-    ## 55: Environmental    Unknown   1 3527 0.0002835
-    ## 56:       Unknown    Unknown  41 3527 0.0116246
-    ##              enum      enum1   x    n      freq
+    ##        enum  enum1   x    n    freq
+    ## 1:  Malware Server 218 3527 0.06181
+    ## 2:  Hacking Server 978 3527 0.27729
+    ## 3:   Social Server 195 3527 0.05529
+    ## 4: Physical Server  38 3527 0.01077
+    ## 5:   Misuse Server 368 3527 0.10434
+    ## 6:    Error Server 235 3527 0.06663
 
 And we can now just visualize that with ggplot in a nice 2x2 grid
 
 ![plot of chunk a2grid](./README_files/figure-markdown_github/a2grid.png)
 
     ##    user  system elapsed 
-    ##  27.565   0.265  28.400
+    ##  27.256   0.249  28.036

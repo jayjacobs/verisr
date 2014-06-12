@@ -28,6 +28,7 @@
 #' directorites, in which case each all the matching files in each 
 #' directory will be laoded.
 #' @param schema a full veris schema with enumerations included.
+#' @param progressbar a logical value to show (or not show) a progress bar
 #' @keywords json
 #' @import rjson
 #' @import data.table
@@ -43,7 +44,7 @@
 #' veris <- json2veris(dir="~/vcdb", 
 #'                     schema="~/veris/verisc-local.json")
 #' }
-json2veris <- function(dir=".", schema=NULL) {
+json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   # if no schema, try to load it from github
   if (missing(schema)) {
     x <- getURL("https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json")
@@ -69,7 +70,8 @@ json2veris <- function(dir=".", schema=NULL) {
   }))
   setnames(veris, names(vft))
   # get a text progress bar going
-  pb <- txtProgressBar(min = 0, max = length(jfiles), style = 3)
+  pb <- NULL
+  if (progressbar) pb <- txtProgressBar(min = 0, max = length(jfiles), style = 3)
   # in each file, pull out the values and fill in the data table
   for(i in seq_along(jfiles)) {
     json <- fromJSON(file=jfiles[i], method='C')
@@ -87,9 +89,9 @@ json2veris <- function(dir=".", schema=NULL) {
       }
       
     }
-    setTxtProgressBar(pb, i)
+    if (!is.null(pb)) setTxtProgressBar(pb, i)
   }
-  close(pb)
+  if (!is.null(pb)) close(pb)
   veris <- post.proc(veris)
   class(veris) <- c("verisr", class(veris))
   veris
@@ -465,10 +467,18 @@ getenum <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
     if (add.n) outdf$n <- n
     if (add.freq) outdf$freq <- outdf$x/n
     outdf <- outdf[order(rank(x), enum)]
-    outdf$enum <- factor(outdf$enum, levels=outdf$enum, ordered=T)
+    if (enum %in% c('actor', 'action', 'asset.variety', 'attribute')) {
+      a4names <- names(geta4names())
+      n.order <- getlast(a4names[grep(paste0('^', enum), a4names)])
+      outdf$enum <- factor(outdf$enum, levels=rev(n.order), ordered=T)
+    } else {
+      outdf$enum <- factor(outdf$enum, levels=outdf$enum, ordered=T)
+    }
     outdf
   }
 }
+
+#' Get the sorted levels or return NULL if none exist for enum
 
 #' Get a count of enumerations values by some other enumeration
 #'
@@ -485,6 +495,7 @@ getenum <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
 #' @param add.freq include a percentage (x/n)
 #' @param fillzero fill in missing matches with zeros
 #' @export
+#' @import data.table
 #' @examples
 #' \dontrun{
 #' hacking <- getenumby(veris, "action", "asset.variety", fillzero=T)
@@ -508,7 +519,6 @@ getenumby <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
   for(i in seq(nrow(outdf))) {
     this.comp <- as.character(unlist(outdf[i, cnm, with = F]))
     count <- sum(rowSums(veris[filter, this.comp, with=F]) == length(enum))
-    # cat("comparing:", paste(this.comp, collapse=" > "), "=", count, "\n")
     outdf[i, x:=count]
   }
   for(column in cnm) {
@@ -521,6 +531,14 @@ getenumby <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
   n <- sum(rowSums(veris[filter ,unlist(savethisn), with=F]) > 0)
   if (add.n) outdf$n <- n
   if (add.freq) outdf$freq <- outdf$x/n
+  a4names <- names(geta4names())
+  for(i in seq_along(enum)) {
+    if (enum[i] %in% c('actor', 'action', 'asset.variety', 'attribute')) {
+      n.order <- getlast(a4names[grep(paste0('^', enum[i]), a4names)])
+      this.col <- colnames(outdf)[i]
+      outdf[[this.col]] <- factor(outdf[[this.col]], levels=rev(n.order), ordered=T)
+    }    
+  }
   # name the columns... enum enum1 enum2 (?)
   # print(outdf)
   #outdf <- outdf[order(-rank(x), enum)]
