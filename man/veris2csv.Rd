@@ -2,10 +2,10 @@
 \alias{veris2csv}
 \title{get matrix for CSV}
 \usage{
-veris2csv(veris)
+veris2csv(dir = ".")
 }
 \arguments{
-  \item{veris}{a verisr object}
+  \item{dir}{one or more directories with json files.}
 }
 \description{
 given a verisr object, this will create a matrix of the

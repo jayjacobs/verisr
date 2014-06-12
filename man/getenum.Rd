@@ -2,17 +2,12 @@
 \alias{getenum}
 \title{Get a vector of values from an enumeration}
 \usage{
-getenum(veris, enum, primary = NULL, secondary = NULL, filter = NULL,
-  add.n = F, add.freq = F, fillzero = T)
+getenum(veris, enum, filter = NULL, add.n = T, add.freq = T)
 }
 \arguments{
   \item{veris}{a verisr object}
 
   \item{enum}{the field to count}
-
-  \item{primary}{a primary field to split the enum by}
-
-  \item{secondary}{a secondary field to split the enum by}
 
   \item{filter}{limit what records are searched (optional)}
 
@@ -20,12 +15,25 @@ getenum(veris, enum, primary = NULL, secondary = NULL, filter = NULL,
   (denominator)}
 
   \item{add.freq}{include a percentage (x/n)}
-
-  \item{fillzero}{add in zeros for missing combinations (if
-  primary or secondary specified)}
 }
 \description{
 This will collect the values for an enumation
+}
+\details{
+Note there are some special values that can be set as the
+enumeration that are not obvious. : * actor, action,
+attribute: will all return the next level down.  For
+example, just querying for "action" will return "malware",
+"hacking", and so on. * asset.assets: will return the type
+of assets, "Server", "Network, "User Dev" and so on *
+victim.industry2: will return a short label of industries
+based on 2 values of NAICS code. * victim.industry3: will
+return a short label of industries based on 3 values of
+NAICS code.
+
+Change: the "add.n" and "add.freq" options are now TRUE by
+default. Change: the "primary" and "secondary" arguments
+were dropped.
 }
 \examples{
 \dontrun{

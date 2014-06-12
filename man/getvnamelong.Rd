@@ -10,6 +10,6 @@ getvnamelong(veris, curname = NULL)
   \item{curname}{used to maintain state internally}
 }
 \description{
-This will grab all the field names from a veris object
+This will grab all the field names from a veris object.
 }
 

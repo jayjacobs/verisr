@@ -2,8 +2,8 @@
 \alias{getenumby}
 \title{Get a count of enumerations values by some other enumeration}
 \usage{
-getenumby(veris, enum, primary, secondary = NULL, filter = NULL,
-  add.n = F, add.freq = F, fillzero = T)
+getenumby(veris, enum, primary = NULL, secondary = NULL, filter = NULL,
+  add.n = T, add.freq = T, fillzero = T)
 }
 \arguments{
   \item{veris}{a verisr object}
@@ -27,10 +27,13 @@ getenumby(veris, enum, primary, secondary = NULL, filter = NULL,
 \description{
 This will collect an enumation and count it.
 }
+\details{
+Change: the "add.n" and "add.freq" options are now TRUE by
+default.
+}
 \examples{
 \dontrun{
-hacking <- getenum(veris, "action.hacking.variety")
-external <- getenum(veris, "actor.external.motive")
+hacking <- getenumby(veris, "action", "asset.variety", fillzero=T)
 }
 }
 

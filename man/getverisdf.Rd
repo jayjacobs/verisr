@@ -1,0 +1,19 @@
+\name{getverisdf}
+\alias{getverisdf}
+\title{Merges veriscol and parseProps in a single object.}
+\usage{
+getverisdf(lschema, a4)
+}
+\arguments{
+  \item{lschema}{the json schema object for VERIS}
+
+  \item{a4}{the a4 named vector for convenience fields}
+}
+\description{
+Given the schema object, will identify each column type to
+be created into a data.table.
+}
+\details{
+TODO: need to add the convenience fields in here.
+}
+

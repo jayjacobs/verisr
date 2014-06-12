@@ -10,7 +10,14 @@
 #' directly accesses as such.
 #' 
 #' Couple of unique things...  The returned object will have additional fields 
-#' for convenience: TODO list those.
+#' for convenience: 
+#'   * *actor* will return top level actor categories
+#'   * *action* will return top level action categories
+#'   * *asset.variety* will return top level asset categories
+#'   * *attribute* will return top level asset categories
+#'   * *victim.industry2* will return the first 2 digits of the NAICS code
+#'   * *victim.industry3* same, first 3 digits
+#'   * *victim.orgsize* returns "Large" and "Small" enumerations
 #' 
 #' The victim.secondary.victim_id, external.actor.region, and any other free
 #' text field that can be repeated is being collapsed into a single string 
@@ -25,6 +32,7 @@
 #' @import rjson
 #' @import data.table
 #' @import RCurl
+#' @export
 #' @examples
 #' \dontrun{
 #' # load up all the veris files in the "vcdb" directory
@@ -120,6 +128,8 @@ post.proc <- function(veris) {
 #' where the name is the field and the value is the R mode string or "enum".
 #'
 #' @param schema the merged veris schema in json
+#' @param cur the current name (internal)
+#' @param outvec the current output vector (internal)
 #' @keywords json
 parseProps <- function(schema, cur="", outvec=NULL) {
   if ('items' %in% names(schema)) {
@@ -186,6 +196,8 @@ veriscol <- function(schema) {
 #' of columns names to be set in the verisr object. 
 #'
 #' @param schema the merged veris schema in json
+#' @param cur the current named value
+#' @param outvec the vector passed around building the output
 #' @keywords json
 mkenums <- function(schema, cur="", outvec=NULL) {
   if ('items' %in% names(schema)) {
@@ -248,6 +260,7 @@ getverisdf <- function(lschema, a4) {
 #' field is an enumeration.
 #' 
 #' @param json the json object from reading in a file.
+#' @param vtype the vtype ojbect from parseProps()
 #' @param cur the current field name as it is being built
 #' @param outlist the return value being passed internally
 nameveris.recurs <- function(json, vtype, cur=NULL, outlist=list()) {
@@ -305,7 +318,8 @@ nameveris.recurs <- function(json, vtype, cur=NULL, outlist=list()) {
 #' field is an enumeration.
 #' 
 #' @param json the json object from reading in a file.
-#' @param the a4 object from geta4names()
+#' @param a4 the a4 object from geta4names()
+#' @param vtype the vtype object from parseProps()
 nameveris <- function(json, a4, vtype) {
   olist <- nameveris.recurs(json, vtype)
   # start simple, with the actor, action, asset and attribute fields
@@ -409,21 +423,21 @@ getnth <- function(nm, which=2) {
 #' * victim.industry2: will return a short label of industries based on 2 values of NAICS code.
 #' * victim.industry3: will return a short label of industries based on 3 values of NAICS code.
 #'
+#' Change: the "add.n" and "add.freq" options are now TRUE by default.
+#' Change: the "primary" and "secondary" arguments were dropped.
+#' 
 #' @param veris a verisr object
 #' @param enum the field to count
-#' @param primary a primary field to split the enum by
-#' @param secondary a secondary field to split the enum by
 #' @param filter limit what records are searched (optional)
 #' @param add.n include a total count of variables found (denominator)
 #' @param add.freq include a percentage (x/n)
-#' @param fillzero add in zeros for missing combinations (if primary or secondary specified)
 #' @export
 #' @examples
 #' \dontrun{
 #' hacking <- getenum(veris, "action.hacking.variety")
 #' external <- getenum(veris, "actor.external.motive")
 #' }
-getenum.no <- function(veris, enum, filter=NULL, add.n=F, add.freq=F) {
+getenum <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
   if (missing(filter)) {
     filter <- rep(T, nrow(veris))
   } else if (length(filter) != nrow(veris)) {
@@ -449,7 +463,7 @@ getenum.no <- function(veris, enum, filter=NULL, add.n=F, add.freq=F) {
     n <- sum(rowSums(veris[filter ,thisn, with=F]) > 0)
     if (add.n) outdf$n <- n
     if (add.freq) outdf$freq <- outdf$x/n
-    outdf <- outdf[order(-rank(x), enum)]
+    outdf <- outdf[order(rank(x), enum)]
     outdf$enum <- factor(outdf$enum, levels=outdf$enum, ordered=T)
     outdf
   }
@@ -459,6 +473,8 @@ getenum.no <- function(veris, enum, filter=NULL, add.n=F, add.freq=F) {
 #'
 #' This will collect an enumation and count it.
 #'
+#' Change: the "add.n" and "add.freq" options are now TRUE by default.
+#' 
 #' @param veris a verisr object
 #' @param enum the main enumeration field 
 #' @param primary the primary enumeration to filter on
@@ -472,8 +488,8 @@ getenum.no <- function(veris, enum, filter=NULL, add.n=F, add.freq=F) {
 #' \dontrun{
 #' hacking <- getenumby(veris, "action", "asset.variety", fillzero=T)
 #' }
-getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL, 
-                      add.n=F, add.freq=F, fillzero=T) {
+getenumby <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL, 
+                      add.n=T, add.freq=T, fillzero=T) {
   if (missing(filter)) {
     filter <- rep(T, nrow(veris))
   } else if (length(filter) != nrow(veris)) {
@@ -481,6 +497,7 @@ getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
                    ") as object (", nrow(veris), ")."))
     return(NULL)
   }
+  cnames <- colnames(veris)
   enum <- c(enum, primary, secondary)
   gkey <- paste0("^", enum, ".[^.]+$")
   savethisn <- thisn <- lapply(gkey, function(x) cnames[grep(x, cnames)])
@@ -488,12 +505,8 @@ getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
   outdf <- as.data.table(expand.grid(thisn))
   cnm <- colnames(outdf)[1:(ncol(outdf)-1)]
   for(i in seq(nrow(outdf))) {
-    foo1 <- outdf[i, cnm, with = F]
-    foo2 <- unlist(foo1)
-    this.comp <- as.character(foo2)
-    foo3 <- veris[filter, this.comp, with=F]
-    foo4 <- rowSums(foo3)
-    count <- sum(foo4 == length(enum))
+    this.comp <- as.character(unlist(outdf[i, cnm, with = F]))
+    count <- sum(rowSums(veris[filter, this.comp, with=F]) == length(enum))
     # cat("comparing:", paste(this.comp, collapse=" > "), "=", count, "\n")
     outdf[i, x:=count]
   }
@@ -513,13 +526,6 @@ getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
   #outdf$enum <- factor(outdf$enum, levels=outdf$enum, ordered=T)
   outdf
 }
-
-# can I create a recursive function?
-enumby.recurs <- function(veris, thisn, filter) {
-  
-}
-  
-
 
 #' Displays a useful description of a verisr object
 #' 
@@ -548,38 +554,47 @@ summary.verisr <- function(object, ...) {
     c(as.character(x), rep(NA, maxline-length(x)))
   }))
   names(temp.out) <- names(outlist)
-  outs <- summary(temp.out, na.rm=T)
+  outs <- summary(temp.out, maxsum=100)
   outs[grep("^NA\'s", outs)] <- ""
   outs
 }
 
-  # don't think I need the mode stuff.
-#   vmode <- sapply(veris[ ,thisn, with=F], mode)
-#   # check one-offs
-#   if(enum %in% c('actor', 'action', 'attribute')) {
-#     thisn <- thisn[vmode=="logical"]
-#     nth <- getnth(thisn, 2)
-#     preout <- sapply(unique(nth), function(x) {
-#       sum(rowSums(veris[ ,thisn[nth %in% x], with=F]*1)>0)
-#     })
-#   } else if(enum=='asset.assets') {
-#     assetmap <- c("S"="Server", "N"="Network", "U"="User Dev", "M"="Media", 
-#                   "P"="Person", "T"="Kiosk/Term", "Unknown"="Unknown")
-#   } else {
-    # test for no names returning
-#   whichwhat <- table()
-#   print(whichwhat)
-#   if(length(whichwhat)>1) {
-#     # multiple data types found with key, return an unknown
-#     warning(paste0("Mixed field types found (", 
-#                      paste(names(whichwhat), collapse=", "), 
-#                      ") for request \"", enum, "\""))
-#     } else {
-#     }
-#     
-#   }
-#     
-  # can we use the vtype field?
+#' Displays a four panel barplot of a verisr object
+#' 
+#' @param object veris object to summarise
+#' @param ... other arguments ignored (for compatibility with generic)
+#' @keywords internal
+#' @import ggplot2
+#' @import grid
+#' @import gridExtra
+#' @method plot verisr
+#' @export
+plot.verisr <- function(x, y, ...) {
+  # @importFrom ggplot2 ggplotGrob
+  veris <- x
+  actor <- getenum(veris, "actor", add.freq=T)
+  action <- getenum(veris, "action", add.freq=T)
+  asset <- getenum(veris, "asset.variety", add.freq=T)
+  attribute <- getenum(veris, "attribute", add.freq=T)
+  a4 <- list(actor=actor, action=action,
+             asset=asset,
+             attribute=attribute)
+  ht_mult <- c(0.22)  # multiplier for each row
+  highest <- (max(sapply(a4, nrow))*ht_mult)
+  
+  plots <- lapply(names(a4), function(x) {
+    this.ht <- (nrow(a4[[x]])*ht_mult)
+    ht.diff <- (highest - this.ht) * 0.5
+    simplebar(a4[[x]], x, plot.margin=unit(c(0,0,ht.diff,0), "npc"))
+  })
+#   foo <- arrangeGrob(plots[[1]], plots[[2]], plots[[3]], plots[[4]], nrow=2)
+#   print(foo)
+
+#   ggplotGrob <- ggplot2::ggplotGrob
+  require(ggplot2)
+   print(do.call(arrangeGrob, c(plots, nrow=2)))
+#   print(do.call(grid.arrange, c(plots, nrow=2)))
+}
 
 
 #' Metadata for 2-digit NAICS industry classification
@@ -602,56 +617,3 @@ NULL
 #' @references \url{www.census.gov/naics/}
 #' @keywords data
 NULL
-
-#' Metadata for victim orgsize
-#'
-#' This data allows a mapping between the enumeration of victim 
-#' employee_count and the designation of "large" and "small"  
-#' @name orgsize
-#' @docType data
-#' @references \url{www.veriscommunity.net}
-#' @keywords data
-NULL
-
-# devtools::install_github("hadley/dplyr", build_vignettes = FALSE)
-# devtools::install_github("hadley/devtools", build_vignettes = FALSE)
-# library(devtools)
-# devtools::install_github(c("rstudio/shiny", "hadley/dplyr", 
-#                            "rstudio/ggvis"), build_vignettes = FALSE)
-# alldir <- list.dirs("~/Documents/json/newfinal/2013/final", recursive=F)
-# alldir <- c(alldir, list.dirs("~/Documents/json/newfinal/2014/final", recursive=F))
-# alldir <- c(alldir, "~/Documents/github/VCDB/data/json")
-# 
-# 93  "string"
-# 35  "object"
-# 34  "array", 
-# 11  "number"
-# 9  "integer"
-# 4  "array"
-
-# Using old verisr:
-# > dir <- '~/Documents/github/VCDB/data/json'
-# > system.time(vcdb <- json2veris(dir))
-# user  system elapsed 
-# 1.637   0.300   2.419 
-# > system.time(vmat <- veris2matrix(vcdb))
-# user  system elapsed 
-# 15.490   0.043  15.532 
-# > system.time(out <- getenum(vcdb, 'attribute.confidentiality.data.variety'))
-# user  system elapsed 
-# 0.615   0.003   0.619 
-# 
-# Using this:
-# > system.time(vcdb <- json2veris(dir))
-# user  system elapsed 
-# 8.616   0.153   8.766
-# > system.time(out <- getenum(vcdb, 'attribute.confidentiality.data.variety'))
-# user  system elapsed 
-# 0.005   0.000   0.004 
-
-# library(rjson)
-# schema <- fromJSON(file="~/Documents/json/newfinal/verisc-merged.json")
-# vtype = parseProps(schema)
-# vfield = veriscol(schema)
-# save(vtype, vfield, file="data/schema1.3.rda")
-

@@ -1,0 +1,14 @@
+\name{post.proc}
+\alias{post.proc}
+\title{Post process the veris object to add convenience fields.}
+\usage{
+post.proc(veris)
+}
+\arguments{
+  \item{veris}{the verisr object}
+}
+\description{
+Given a veris object this will populate several convenience
+fields like the victim.industry2 and industry3,
+}
+

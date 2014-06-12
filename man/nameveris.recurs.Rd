@@ -1,0 +1,22 @@
+\name{nameveris.recurs}
+\alias{nameveris.recurs}
+\title{Return a dense list of only the VERIS variables and values in the JSON.}
+\usage{
+nameveris.recurs(json, vtype, cur = NULL, outlist = list())
+}
+\arguments{
+  \item{json}{the json object from reading in a file.}
+
+  \item{vtype}{the vtype ojbect from parseProps()}
+
+  \item{cur}{the current field name as it is being built}
+
+  \item{outlist}{the return value being passed internally}
+}
+\description{
+Given an incident in json format, it will process the file
+and return a simple list object where each element is named
+with the field name and the value is the value read in, or
+True if the field is an enumeration.
+}
+
