@@ -38,3 +38,5 @@ simplebar <- function(enumdf, title=NULL, solidfill="steelblue", ...) {
   gg <- gg + theme_vbar
   gg
 }
+
+

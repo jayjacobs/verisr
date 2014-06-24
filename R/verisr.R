@@ -113,8 +113,14 @@ post.proc <- function(veris) {
   veris[ , victim.orgsize.Small := rowSums(veris[ ,small, with=F]) > 0]
   veris[ , victim.orgsize.Large := rowSums(veris[ ,large, with=F]) > 0]
   # victim.industry
-  veris[ , victim.industry2 := substring(unlist(veris[ ,"victim.industry", with=F], 
-                                                use.names=F), 1L, 2L)]
+  ind2 <- substring(unlist(veris[ ,"victim.industry", with=F], use.names=F), 1L, 2L)
+  # want an enumeration now, instead of a single list.
+  # veris[ , victim.industry2 := ind2]
+  for(x in unique(ind2)) {
+    iname <- paste0('victim.industry2.', x)
+    veris[ ,iname:=(ind2==x), with=F]
+  }
+  ## industry3 may require more prep work since dashes are allowed.
   veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
                                                 use.names=F), 1L, 3L)]
   # actor.partner.industry
@@ -401,6 +407,23 @@ getlast <- function(nm) {
   })
 }
 
+#' Get the last element from a column name, include action
+#' 
+#' Givn a vector with one or more column names (veris fields), this will
+#' return the last string in the name, as it is seperated by [.].  It will
+#' also assume this is the action and attempt to map nice names to the name.
+#' 
+#' @param nm the vector of column names
+getlastaction <- function(nm) {
+  fixlabel <- c("malware"="[Mal]", "hacking"="[Hack]", "social"="[Soc]",
+                "error"="[Err]", "physical"="[Phys]", "misuse"="[Mis]",
+                "environmental"="[Env]", "unknown"="[Unk]")
+  sapply(nm, function(x) {
+    temp <- unlist(strsplit(x, '[.]'))
+    paste(temp[length(temp)], fixlabel[temp[2]])
+  })
+}
+
 #' Get the nth element from a column name
 #' 
 #' Givn a vector with one or more column names (veris fields), this will
@@ -422,6 +445,7 @@ getnth <- function(nm, which=2) {
 #' Note there are some special values that can be set as the enumeration
 #' that are not obvious. :
 #' * actor, action, attribute: will all return the next level down.  For example, just querying for "action" will return "malware", "hacking", and so on.
+#' * action.variety: will return the variety enumerations across all actions (e.g. top N actions) (not in getenumby() yet)
 #' * asset.assets: will return the type of assets, "Server", "Network, "User Dev" and so on
 #' * victim.industry2: will return a short label of industries based on 2 values of NAICS code.
 #' * victim.industry3: will return a short label of industries based on 3 values of NAICS code.
@@ -455,12 +479,20 @@ getenum <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
   # if field name exists as is, return it, else search.
   if(any(grepl(paste0('^', enum, "$"), cnames))) {
     warning("need to return single field here")
+    # TODO handle non-logical fields
   } else {
     # only match where there are one level of enumerations 
     # after the requested enum
-    gkey <- paste0("^", enum, ".[^.]+$")
-    thisn <- cnames[grep(gkey, cnames)]
-    ret <- setNames(colSums(veris[filter ,thisn, with=F]), getlast(thisn))
+    if(enum=="action.variety") {
+      gkey <- paste0("^action.*.variety")
+      thisn <- cnames[grep(gkey, cnames)]
+      ret <- setNames(colSums(veris[filter ,thisn, with=F]), getlastaction(thisn))
+      # TODO add "Action.variety" into getenumby()
+    } else {
+      gkey <- paste0("^", enum, ".[^.]+$")
+      thisn <- cnames[grep(gkey, cnames)]
+      ret <- setNames(colSums(veris[filter ,thisn, with=F]), getlast(thisn))
+    }
     ret <- ret[ret>0]
     outdf <- data.table(enum=names(ret), x=ret)
     n <- sum(rowSums(veris[filter ,thisn, with=F]) > 0)
