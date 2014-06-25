@@ -3,7 +3,7 @@
 \alias{simplebar}
 \title{Returns a simple bar plot of enumeration data.table}
 \usage{
-simplebar(enumdf, title = NULL, rm.zero = T, solidfill = "steelblue", ...)
+simplebar(enumdf, title = NULL, solidfill = "steelblue", ...)
 }
 \arguments{
 \item{enumdf}{enumeration data table}

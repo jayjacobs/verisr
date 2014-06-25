@@ -642,9 +642,19 @@ plot.verisr <- function(x, y, ...) {
 #   print(foo)
 
 #   ggplotGrob <- ggplot2::ggplotGrob
-  require(ggplot2)
    print(do.call(arrangeGrob, c(plots, nrow=2)))
 #   print(do.call(grid.arrange, c(plots, nrow=2)))
+}
+
+#' Convenience function to pull the logical columns from verisr object
+#' 
+#' Given a verisr object this will return a vector of column names which are logical values.
+#' 
+#' @param veris the verisr object
+#' @export
+getlogical <- function(veris) {
+  our.cols <- sapply(veris, mode)
+  names(our.cols[grep('^logical$', our.cols)])
 }
 
 
@@ -668,3 +678,29 @@ NULL
 #' @references \url{www.census.gov/naics/}
 #' @keywords data
 NULL
+
+
+#' sample data file to test/explore verisr
+#'
+#' This is a collection of the 1000 most complete incidents within the VCDB database.
+#' See the example below on how the data was generated.
+#' 
+#' @name veris.sample
+#' @docType data
+#' @keywords data
+#' @examples
+#' \dontrun{
+#' # set vcdbdir and schema file
+#' vcdb <- json2veris(vcdbdir, schemafile, progressbar = T)
+#' mycols <- getlogical(vcdb)
+#' testdata <- vcdb[order(-rowSums(vcdb[, mycols, with=F]))]
+#' got.action <- as.vector(testdata[ ,'action.Unknown', with=F] == F)
+#' got.actor <- as.vector(testdata[ ,'actor.Unknown', with=F] == F)
+#' got.asset <- as.vector(testdata[ ,'asset.assets.variety.Unknown', with=F] == F)
+#' veris.sample <- head(testdata[got.actor & got.action & got.asset, ], 1000)
+#' # cast this into a verisr object for future use.
+#' class(veris.sample) <- c("verisr", "data.table", "data.frame")
+#' save(veris.sample, file="data/veris.sample.rda", compress="xz")
+#' }
+NULL
+

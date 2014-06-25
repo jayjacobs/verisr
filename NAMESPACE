@@ -2,8 +2,10 @@
 
 S3method(plot,verisr)
 S3method(summary,verisr)
+export(foldmatrix)
 export(getenum)
 export(getenumby)
+export(getlogical)
 export(json2veris)
 export(simplebar)
 export(veris2csv)
