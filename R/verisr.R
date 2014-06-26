@@ -128,6 +128,7 @@ post.proc <- function(veris) {
                                                 use.names=F), 1L, 2L)]
   veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
                                                 use.names=F), 1L, 3L)]
+  veris[ , pattern := getpattern(veris)]
   veris
 }
 
@@ -449,6 +450,7 @@ getnth <- function(nm, which=2) {
 #' * asset.assets: will return the type of assets, "Server", "Network, "User Dev" and so on
 #' * victim.industry2: will return a short label of industries based on 2 values of NAICS code.
 #' * victim.industry3: will return a short label of industries based on 3 values of NAICS code.
+#' * pattern: will return the pattern the row is in.
 #'
 #' Change: the "add.n" and "add.freq" options are now TRUE by default.
 #' Change: the "primary" and "secondary" arguments were dropped.
@@ -478,8 +480,20 @@ getenum <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
   # extract by the enumeration
   # if field name exists as is, return it, else search.
   if(any(grepl(paste0('^', enum, "$"), cnames))) {
-    warning("need to return single field here")
-    # TODO handle non-logical fields
+    
+    if(is.logical(veris[[enum]])) {
+      warning(paste0("single logical field requested: ", enum, ", skipping..."))  
+    } else {
+      out.table <- table(veris[[enum]])
+      outdf <- data.frame(enum=names(out.table), x=as.vector(out.table))
+      if (add.n) outdf$n <- sum(!is.na(veris[[enum]]))
+      if (add.freq) outdf$freq <- outdf$x/outdf$n
+      if (is.ordered(veris[[enum]])) {
+        outdf$enum <- factor(outdf$enum, levels=levels(veris[[enum]]), ordered=T)
+      } else {
+        outdf$enum <- factor(outdf$enum, levels=outdf$enum, ordered=T)
+      }
+    }
   } else {
     # only match where there are one level of enumerations 
     # after the requested enum
@@ -496,6 +510,7 @@ getenum <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
     ret <- ret[ret>0]
     outdf <- data.table(enum=names(ret), x=ret)
     n <- sum(rowSums(veris[filter ,thisn, with=F]) > 0)
+    if (n==0) return(data.frame())
     if (add.n) outdf$n <- n
     if (add.freq) outdf$freq <- outdf$x/n
     outdf <- outdf[order(rank(x), enum)]
@@ -506,8 +521,8 @@ getenum <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
     } else {
       outdf$enum <- factor(outdf$enum, levels=outdf$enum, ordered=T)
     }
-    outdf
   }
+  outdf
 }
 
 #' Get the sorted levels or return NULL if none exist for enum
@@ -561,6 +576,10 @@ getenumby <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
   if (length(enum)>1) extra.names <- paste0('enum', seq((length(enum)-1)))
   setnames(outdf, c('enum', extra.names, 'x'))
   n <- sum(rowSums(veris[filter ,unlist(savethisn), with=F]) > 0)
+  if (n==0) return(data.frame())
+  if (!fillzero) {
+    outdf <- outdf[outdf$x>0,]
+  }
   if (add.n) outdf$n <- n
   if (add.freq) outdf$freq <- outdf$x/n
   a4names <- names(geta4names())
@@ -691,6 +710,7 @@ NULL
 #' @examples
 #' \dontrun{
 #' # set vcdbdir and schema file
+#' 
 #' vcdb <- json2veris(vcdbdir, schemafile, progressbar = T)
 #' mycols <- getlogical(vcdb)
 #' testdata <- vcdb[order(-rowSums(vcdb[, mycols, with=F]))]

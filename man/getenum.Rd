@@ -27,6 +27,7 @@ that are not obvious. :
 * asset.assets: will return the type of assets, "Server", "Network, "User Dev" and so on
 * victim.industry2: will return a short label of industries based on 2 values of NAICS code.
 * victim.industry3: will return a short label of industries based on 3 values of NAICS code.
+* pattern: will return the pattern the row is in.
 
 Change: the "add.n" and "add.freq" options are now TRUE by default.
 Change: the "primary" and "secondary" arguments were dropped.

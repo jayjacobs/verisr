@@ -10,6 +10,7 @@ See the example below on how the data was generated.
 \examples{
 \dontrun{
 # set vcdbdir and schema file
+
 vcdb <- json2veris(vcdbdir, schemafile, progressbar = T)
 mycols <- getlogical(vcdb)
 testdata <- vcdb[order(-rowSums(vcdb[, mycols, with=F]))]
