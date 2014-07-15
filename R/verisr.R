@@ -40,6 +40,9 @@
 #' # grab the schema off of github.
 #' veris <- json2veris(dir="~/vcdb")
 #' 
+#' # load up files from multiple directories
+#' veris <- json2veris(dir=c("~/vcdb", "private_data))
+#' 
 #' # specify a local schema with localized plus section.
 #' veris <- json2veris(dir="~/vcdb", 
 #'                     schema="~/veris/verisc-local.json")

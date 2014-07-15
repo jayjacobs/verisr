@@ -30,6 +30,13 @@ vcdb.dir <- "../VCDB/data/json/"
 vcdb <- json2veris(vcdb.dir)
 ```
 
+You can also use a vector of directory names to load files from multiple sources
+```{r}
+library(verisr)
+data_dirs <- c("../VCDB/data/json", "private_data")
+veris <- json2veris(data_dirs)
+```
+
 What json2veris() returns is a plain data.table object, which enables you (the developer) to work directly with the data.
 
 ```{r}
