@@ -39,4 +39,7 @@ simplebar <- function(enumdf, title=NULL, solidfill="steelblue", ...) {
   gg
 }
 
-
+a4grid <- function(veris) {
+  foo <- getenumby(veris, enum=c('actor', 'action', 'asset.variety', 'attribute'), fillzero=F)
+  
+}

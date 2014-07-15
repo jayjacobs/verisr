@@ -124,7 +124,7 @@ post.proc <- function(veris) {
   veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
                                                 use.names=F), 1L, 3L)]
   # actor.partner.industry
-  veris[ , victim.industry2 := substring(unlist(veris[ ,"actor.partner.industry", with=F], 
+  veris[ , actor.partner.industry2 := substring(unlist(veris[ ,"actor.partner.industry", with=F], 
                                                 use.names=F), 1L, 2L)]
   veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
                                                 use.names=F), 1L, 3L)]
