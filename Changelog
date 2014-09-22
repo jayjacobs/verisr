@@ -1,0 +1,7 @@
+verision 2.0
+
+* added sample data "veris.sample", this will allow quick exploration and samples to function
+* foldmatrix: several arguments were changed and removed, will require rework in existing code.
+* foldmatrix: enabled seperate variables of "rows" and "cols" to specify the rows and columns of output matrix 
+* foldmatrix: rows can be a named list of logical to be used as a filter, or a list of column names of logicals
+* foldmatrix: the "clean" variable is now defaulting to TRUE

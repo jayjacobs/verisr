@@ -7,7 +7,6 @@ Icon
 .Rhistory
 .RData
 .RDataTmp
-README.html
 testing*.R
 ignore/*
 

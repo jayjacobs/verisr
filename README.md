@@ -1,18 +1,24 @@
+---
+output:
+  md_document:
+    variant: markdown_github
+---
 verisr
 ========================================================
 
 This package is to support data analysis within the VERIS framework (http://veriscommunity.net).  It is intended to work directly with raw JSON and can be used against the VERIS Community Database (VCDB) found at (http://veriscommunity.net/doku.php?id=public) and (https://github.com/vz-risk/VCDB).
 
+This package has two purposes.  First is to convert one or more directories of VERIS (JSON) files into a usable object (in this version it is currently a data.table, but I hope to move to a dplyr object).  Second, it offers a set of convenience functions for doing basic information retrieval from the object.
+
 Install it from straight from github:
 
 
 
-
 ```r
+# install devtools from https://github.com/hadley/devtools
 library("devtools")
 install_github("verisr", "jayjacobs")
 ```
-
 
 To begin, load the package and point it at a directory of JSON files storing VERIS data.
 
@@ -20,11 +26,38 @@ To begin, load the package and point it at a directory of JSON files storing VER
 ```r
 library(verisr)
 vcdb.dir <- "../VCDB/data/json/"
+# may optionally load a custom json schema file.
 vcdb <- json2veris(vcdb.dir)
 ```
 
+You can also use a vector of directory names to load files from multiple sources
 
-Now that we have this, we can get a quick view of what's in the data:
+```r
+library(verisr)
+data_dirs <- c("../VCDB/data/json", "private_data")
+veris <- json2veris(data_dirs)
+```
+
+What json2veris() returns is a plain data.table object, which enables you (the developer) to work directly with the data.
+
+
+```r
+class(vcdb)
+```
+
+```
+## [1] "verisr"     "data.table" "data.frame"
+```
+
+```r
+dim(vcdb)
+```
+
+```
+## [1]    0 1642
+```
+
+There are several convenience functions to get a feel for what's in the current verisr object.
 
 
 ```r
@@ -32,39 +65,25 @@ summary(vcdb)
 ```
 
 ```
-## 2576 incidents in this object.
-## 
-## Actor:
-## external internal  partner  unknown 
-##     1481      893      137      120 
-## 
-## Action:
-## environmental         error       hacking       malware        misuse 
-##             3           593           758            93           412 
-##      physical        social       unknown 
-##           657            58           139 
-## 
-## Asset:
-## Kiosk/Term      Media    Network     Person     Server    Unknown 
-##         60        702         20         71       1172        186 
-##   User Dev 
-##        576 
-## 
-## Attribute:
-##    availability confidentiality       integrity 
-##             894            2377             479
+## 0 incidents in this object.
 ```
 
-
-And let's look at a high level bar plot of the data:
+```
+## < table of extent 0 x 4 >
+```
 
 
 ```r
 plot(vcdb)
 ```
 
-![plot of chunk basic-plot](figure/basic-plot.png) 
+```
+## Warning: no non-missing arguments to max; returning -Inf
+```
 
+```
+## Error: non-numeric argument to mathematical function
+```
 
 Let's look for a specific variable:
 
@@ -75,104 +94,120 @@ print(ext.variety)
 ```
 
 ```
-##                enum   x
-## 1           Unknown 990
-## 2          Activist 273
-## 3      Unaffiliated  99
-## 4   Organized crime  59
-## 5   Former employee  16
-## 6             Other  14
-## 7     Force majeure  10
-## 8      Nation-state   8
-## 9  State-affiliated   7
-## 10       Competitor   4
-## 11     Acquaintance   1
-## 12         Customer   1
+## data frame with 0 columns and 0 rows
 ```
-
 
 And we could create a barplot with ggplot:
 
 
 ```r
 library(ggplot2)
-gg <- ggplot(ext.variety, aes(x = enum, y = x))
-gg <- gg + geom_bar(stat = "identity", fill = "steelblue")
+gg <- ggplot(ext.variety, aes(x=enum, y=x))
+gg <- gg + geom_bar(stat="identity", fill="steelblue")
 gg <- gg + coord_flip() + theme_bw()
 print(gg)
 ```
 
-![plot of chunk basic-ggplot](figure/basic-ggplot.png) 
+```
+## Error: object 'enum' not found
+```
 
-
-In progress: searching by two enumerations:
+or use a built-in function to do the same thing (but a little prettier).
 
 
 ```r
-hacking.actor <- getenumby(vcdb, "action.hacking.vector", "actor.external.variety")
-head(hacking.actor)
+print(simplebar(ext.variety, "Variety of Hacking Actions"))
 ```
 
 ```
-##              enum         primary   x
-## 1 Web application         Unknown 167
-## 2 Web application        Activist 215
-## 3 Web application Organized crime   8
-## 4 Web application    Unaffiliated  55
-## 5 Web application      Competitor   0
-## 6 Web application Former employee   2
+## Warning: no non-missing arguments to max; returning -Inf
+```
+
+```
+## Error: non-numeric argument to mathematical function
 ```
 
 
-Now we can create all sorts of views of this data.
-For example a faceted bar plot comparing the two:
+# Filters have changed
+
+The way filters are handled are different.  The old function of getfilter() has been removed, it would just return a vector of logicals the same length as the verisr object which would indicate which records to use.
+Since you have the data (the verisr object is just a data.table) and all the enumerations are logical values, it should be trivial to create a filter.  For example, to filter on all the incidents with confirmed data loss, and then further filter for hacking vector of web appliation...
 
 
 ```r
-gg <- ggplot(hacking.actor, aes(x = enum, y = x))
-gg <- gg + geom_bar(stat = "identity", fill = "steelblue")
-gg <- gg + facet_wrap(~primary, ncol = 2)
-gg <- gg + ylab("Incidents") + xlab("Hacking Vector")
-gg <- gg + ggtitle("External Actors by Hacking Vector")
-gg <- gg + coord_flip() + theme_bw()
-print(gg)
+# see the docs on data.table for getting columns like this
+ddfilter <- vcdb[["attribute.confidentiality.data_disclosure.Yes"]]
+webfilter <- vcdb[["action.hacking.vector.Web application"]]
+# now we can combine with | or & ("or" and "and" respectively)
+# to filter incidents with confirmed data loss and web vector:
+ddweb <- ddfilter & webfilter
 ```
 
-![plot of chunk facet-ggplot](figure/facet-ggplot.png) 
-
-
-Finally, let's set a filter for only confirmed loss events (data_disclosure="Yes").
-Then get the interaction of the top level actions and assets.
+Since these are just logical vectors now, we can use sum() to see how many matches.
 
 
 ```r
-ddfilter <- getfilter(vcdb, and = list(attribute.confidentiality.data_disclosure = "Yes"))
-action.asset <- getenumby(vcdb, enum = "asset.assets", primary = "action", filter = ddfilter)
-head(action.asset)
+cat("Confirmed data loss events:", sum(ddfilter), "\n")
 ```
 
 ```
-##     enum primary   x
-## 1 Server hacking 423
-## 2 Server  misuse 213
-## 3 Server   error 105
-## 4 Server  social  38
-## 5 Server unknown  18
-## 6 Server malware  35
+## Confirmed data loss events: 0
 ```
 
+```r
+cat("Hacking vector of web apps:", sum(webfilter), "\n")
+```
+
+```
+## Hacking vector of web apps: 0
+```
+
+```r
+cat("Both data loss and web app:", sum(ddweb), "\n")
+```
+
+```
+## Both data loss and web app: 0
+```
+
+# Special names added to verisr object
+
+Most of the names to query are obvious from the schema.  Things like "actor.external.motive" for example is relatively intuitive.  But when the verisr object is created there are several more fields dervied from the data to make queries easier.  Those are:
+
+* *actor* will return top level actor categories
+* *action* will return top level action categories
+* *asset.variety* will return top level asset categories
+* *attribute* will return top level asset categories
+* *victim.industry2* will return the first 2 digits of the NAICS code
+* *victim.industry3* same, first 3 digits
+* *victim.orgsize* returns "Large" and "Small" enumerations
+
+If you come across any more that you'd like added, please reach out.
+
+# Querying Multiple Enumerations
+
+One rather fun feature of the lastest version is the ability to query for an enumeration as it relates to one or more other enumerations.  For example, if you wanted to create a A2 grid, which compares the action categories to the asset categories, it's a single query:
+
+```r
+a2 <- getenumby(vcdb, c("action", "asset.variety"))
+head(a2)
+```
+
+```
+## data frame with 0 columns and 0 rows
+```
+
+And we can now just visualize that with ggplot in a nice 2x2 grid
 
 
 
 
-And now make a nice 2 x 2 grid with the data.
-
-![plot of chunk a2grid](figure/a2grid.png) 
-
+```
+## Error: object 'enum' not found
+```
 
 
 ```
 ##    user  system elapsed 
-##   6.807   0.150   7.006
+##   2.064   0.057   3.253
 ```
-
