@@ -1,38 +1,33 @@
----
-output:
-  md_document:
-    variant: markdown_github
----
 verisr
-========================================================
+======
 
-This package is to support data analysis within the VERIS framework (http://veriscommunity.net).  It is intended to work directly with raw JSON and can be used against the VERIS Community Database (VCDB) found at (http://veriscommunity.net/doku.php?id=public) and (https://github.com/vz-risk/VCDB).
+This package is to support data analysis within the VERIS framework (<http://veriscommunity.net>). It is intended to work directly with raw JSON and can be used against the VERIS Community Database (VCDB) found at (<http://veriscommunity.net/doku.php?id=public>) and (<https://github.com/vz-risk/VCDB>).
 
-This package has two purposes.  First is to convert one or more directories of VERIS (JSON) files into a usable object (in this version it is currently a data.table, but I hope to move to a dplyr object).  Second, it offers a set of convenience functions for doing basic information retrieval from the object.
+This package has two purposes. First is to convert one or more directories of VERIS (JSON) files into a usable object (in this version it is currently a data.table, but I hope to move to a dplyr object). Second, it offers a set of convenience functions for doing basic information retrieval from the object.
 
 Install it from straight from github:
 
-
-
-```r
+``` {.r}
 # install devtools from https://github.com/hadley/devtools
-library("devtools")
-install_github("verisr", "jayjacobs")
+devtools::install_github("jayjacobs/verisr")
 ```
 
 To begin, load the package and point it at a directory of JSON files storing VERIS data.
 
-
-```r
+``` {.r}
 library(verisr)
 vcdb.dir <- "../VCDB/data/json/"
 # may optionally load a custom json schema file.
-vcdb <- json2veris(vcdb.dir)
+if (interactive()) { # show progress bar if the session is interactive
+  vcdb <- json2veris(vcdb.dir, progressbar=TRUE)
+} else {
+  vcdb <- json2veris(vcdb.dir)  
+}
 ```
 
 You can also use a vector of directory names to load files from multiple sources
 
-```r
+``` {.r}
 library(verisr)
 data_dirs <- c("../VCDB/data/json", "private_data")
 veris <- json2veris(data_dirs)
@@ -40,101 +35,101 @@ veris <- json2veris(data_dirs)
 
 What json2veris() returns is a plain data.table object, which enables you (the developer) to work directly with the data.
 
-
-```r
+``` {.r}
 class(vcdb)
 ```
 
-```
-## [1] "verisr"     "data.table" "data.frame"
-```
+    ## [1] "verisr"     "data.table" "data.frame"
 
-```r
+``` {.r}
 dim(vcdb)
 ```
 
-```
-## [1]    0 1642
-```
+    ## [1] 4314 1695
 
 There are several convenience functions to get a feel for what's in the current verisr object.
 
-
-```r
+``` {.r}
 summary(vcdb)
 ```
 
-```
-## 0 incidents in this object.
-```
+    ## 4314 incidents in this object.
 
-```
-## < table of extent 0 x 4 >
-```
+    ##       actor                action            asset     
+    ##  External:2301   Environmental:   7   Kiosk/Term: 100  
+    ##  Internal:1756   Error        :1176   Media     :1185  
+    ##  Partner : 184   Hacking      :1354   Network   : 126  
+    ##  Unknown : 150   Malware      : 352   Person    : 325  
+    ##                  Misuse       : 747   Server    :1969  
+    ##                  Physical     : 813   Unknown   : 376  
+    ##                  Social       : 303   User Dev  : 930  
+    ##                  Unknown      : 167                    
+    ##                                                        
+    ##            attribute   
+    ##  Availability   :1385  
+    ##  Confidentiality:3902  
+    ##  Integrity      : 973  
+    ##                        
+    ##                        
+    ##                        
+    ##                        
+    ##                        
+    ## 
 
-
-```r
+``` {.r}
+library(ggplot2)
 plot(vcdb)
 ```
 
-```
-## Warning: no non-missing arguments to max; returning -Inf
-```
+![plot of chunk basic-plot](./README_files/figure-markdown_github/basic-plot.png)
 
-```
-## Error: non-numeric argument to mathematical function
-```
+Let's look for a specific variable by getting the data aggregated on a VERIS enumeration. In this case the variety of external actor.
 
-Let's look for a specific variable:
-
-
-```r
+``` {.r}
 ext.variety <- getenum(vcdb, "actor.external.variety")
 print(ext.variety)
 ```
 
-```
-## data frame with 0 columns and 0 rows
-```
+    ##                 enum    x    n      freq
+    ##  1:     Acquaintance    2 2301 0.0008692
+    ##  2:        Terrorist    3 2301 0.0013038
+    ##  3:         Customer    6 2301 0.0026076
+    ##  4:       Competitor    8 2301 0.0034767
+    ##  5:    Force majeure   16 2301 0.0069535
+    ##  6:            Other   23 2301 0.0099957
+    ##  7:     Nation-state   25 2301 0.0108648
+    ##  8:  Former employee   28 2301 0.0121686
+    ##  9:  Organized crime  114 2301 0.0495437
+    ## 10:     Unaffiliated  160 2301 0.0695350
+    ## 11: State-affiliated  197 2301 0.0856150
+    ## 12:         Activist  393 2301 0.1707953
+    ## 13:          Unknown 1404 2301 0.6101695
 
-And we could create a barplot with ggplot:
+You can see this returns the enumeration (enum), the count of that enumeration (x), the sample size (n) of the enumeration class (external actor in this case) and the frequency (freq = x/n). From that, you could create a barplot with ggplot:
 
-
-```r
-library(ggplot2)
+``` {.r}
 gg <- ggplot(ext.variety, aes(x=enum, y=x))
 gg <- gg + geom_bar(stat="identity", fill="steelblue")
 gg <- gg + coord_flip() + theme_bw()
 print(gg)
 ```
 
-```
-## Error: object 'enum' not found
-```
+![plot of chunk basic-ggplot](./README_files/figure-markdown_github/basic-ggplot.png)
 
 or use a built-in function to do the same thing (but a little prettier).
 
-
-```r
+``` {.r}
 print(simplebar(ext.variety, "Variety of Hacking Actions"))
 ```
 
-```
-## Warning: no non-missing arguments to max; returning -Inf
-```
+![plot of chunk internal-plot](./README_files/figure-markdown_github/internal-plot.png)
 
-```
-## Error: non-numeric argument to mathematical function
-```
+Filters have changed
+====================
 
+The way filters are handled are different. The old function of getfilter() has been removed, it would just return a vector of logicals the same length as the verisr object which would indicate which records to use. Since you have the data (the verisr object is just a data.table) and all the enumerations are logical values, it should be trivial to create a filter. For example, to filter on all the incidents with confirmed data loss, and then further filter for hacking vector of web appliation...
 
-# Filters have changed
-
-The way filters are handled are different.  The old function of getfilter() has been removed, it would just return a vector of logicals the same length as the verisr object which would indicate which records to use.
-Since you have the data (the verisr object is just a data.table) and all the enumerations are logical values, it should be trivial to create a filter.  For example, to filter on all the incidents with confirmed data loss, and then further filter for hacking vector of web appliation...
-
-
-```r
+``` {.r}
 # see the docs on data.table for getting columns like this
 ddfilter <- vcdb[["attribute.confidentiality.data_disclosure.Yes"]]
 webfilter <- vcdb[["action.hacking.vector.Web application"]]
@@ -145,69 +140,61 @@ ddweb <- ddfilter & webfilter
 
 Since these are just logical vectors now, we can use sum() to see how many matches.
 
-
-```r
+``` {.r}
 cat("Confirmed data loss events:", sum(ddfilter), "\n")
 ```
 
-```
-## Confirmed data loss events: 0
-```
+    ## Confirmed data loss events: 2518
 
-```r
+``` {.r}
 cat("Hacking vector of web apps:", sum(webfilter), "\n")
 ```
 
-```
-## Hacking vector of web apps: 0
-```
+    ## Hacking vector of web apps: 692
 
-```r
+``` {.r}
 cat("Both data loss and web app:", sum(ddweb), "\n")
 ```
 
-```
-## Both data loss and web app: 0
-```
+    ## Both data loss and web app: 363
 
-# Special names added to verisr object
+Special names added to verisr object
+====================================
 
-Most of the names to query are obvious from the schema.  Things like "actor.external.motive" for example is relatively intuitive.  But when the verisr object is created there are several more fields dervied from the data to make queries easier.  Those are:
+Most of the names to query are obvious from the schema. Things like "actor.external.motive" for example is relatively intuitive. But when the verisr object is created there are several more fields dervied from the data to make queries easier. Those are:
 
-* *actor* will return top level actor categories
-* *action* will return top level action categories
-* *asset.variety* will return top level asset categories
-* *attribute* will return top level asset categories
-* *victim.industry2* will return the first 2 digits of the NAICS code
-* *victim.industry3* same, first 3 digits
-* *victim.orgsize* returns "Large" and "Small" enumerations
+-   *actor* will return top level actor categories
+-   *action* will return top level action categories
+-   *asset.variety* will return top level asset categories
+-   *attribute* will return top level asset categories
+-   *victim.industry2* will return the first 2 digits of the NAICS code
+-   *victim.industry3* same, first 3 digits
+-   *victim.orgsize* returns "Large" and "Small" enumerations
+-   *pattern* returns the patterns (see DBIR 2014) each line is classified as
 
 If you come across any more that you'd like added, please reach out.
 
-# Querying Multiple Enumerations
+Querying Multiple Enumerations
+==============================
 
-One rather fun feature of the lastest version is the ability to query for an enumeration as it relates to one or more other enumerations.  For example, if you wanted to create a A2 grid, which compares the action categories to the asset categories, it's a single query:
+One rather fun feature of the lastest version is the ability to query for an enumeration as it relates to one or more other enumerations. For example, if you wanted to create a A2 grid, which compares the action categories to the asset categories, it's a single query:
 
-```r
+``` {.r}
 a2 <- getenumby(vcdb, c("action", "asset.variety"))
 head(a2)
 ```
 
-```
-## data frame with 0 columns and 0 rows
-```
+    ##        enum  enum1    x    n     freq
+    ## 1:  Malware Server  240 4314 0.055633
+    ## 2:  Hacking Server 1132 4314 0.262401
+    ## 3:   Social Server  225 4314 0.052156
+    ## 4: Physical Server   42 4314 0.009736
+    ## 5:   Misuse Server  457 4314 0.105934
+    ## 6:    Error Server  271 4314 0.062819
 
 And we can now just visualize that with ggplot in a nice 2x2 grid
 
+![plot of chunk a2grid](./README_files/figure-markdown_github/a2grid.png)
 
-
-
-```
-## Error: object 'enum' not found
-```
-
-
-```
-##    user  system elapsed 
-##   2.064   0.057   3.253
-```
+    ##    user  system elapsed 
+    ##  25.316   0.326  26.291

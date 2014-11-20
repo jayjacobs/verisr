@@ -81,8 +81,13 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
     nfield <- nameveris(json, a4, vtype)
     if (length(nfield)==0) warning(paste("empty json file parsed from", jfiles[i]))
     for(x in names(nfield)) {
-      tt <- tryCatch(set(veris, i=i, j=x, value=paste(nfield[[x]], collapse=",")),
-                     error=function(e) e, warning=function(w) w)
+      if(length(nfield[[x]]) > 1) {
+        tt <- tryCatch(set(veris, i=as.integer(i), j=x, value=paste(nfield[[x]], collapse=",")),
+                       error=function(e) e, warning=function(w) w)
+      } else {
+        tt <- tryCatch(set(veris, i=as.integer(i), j=x, value=nfield[[x]]),
+                       error=function(e) e, warning=function(w) w)
+      }
       if(is(tt,"warning")) {
         cat(paste0("Warning found trying to set ", i, ", \"", x, "\" for \"", nfield[[x]], "\"\n"))
         cat("  length of assignment:", length(nfield[[x]]), "\n")

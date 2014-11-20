@@ -1,8 +1,9 @@
 ---
-output:
+output: html_document
+---
   md_document:
     variant: markdown_github
----
+
 verisr
 ========================================================
 
@@ -17,8 +18,7 @@ savetime <- proc.time()
 
 ```{r eval=FALSE}
 # install devtools from https://github.com/hadley/devtools
-library("devtools")
-install_github("verisr", "jayjacobs")
+devtools::install_github("jayjacobs/verisr")
 ```
 
 To begin, load the package and point it at a directory of JSON files storing VERIS data.
@@ -27,11 +27,15 @@ To begin, load the package and point it at a directory of JSON files storing VER
 library(verisr)
 vcdb.dir <- "../VCDB/data/json/"
 # may optionally load a custom json schema file.
-vcdb <- json2veris(vcdb.dir)
+if (interactive()) { # show progress bar if the session is interactive
+  vcdb <- json2veris(vcdb.dir, progressbar=TRUE)
+} else {
+  vcdb <- json2veris(vcdb.dir)  
+}
 ```
 
 You can also use a vector of directory names to load files from multiple sources
-```{r}
+```{r eval=FALSE}
 library(verisr)
 data_dirs <- c("../VCDB/data/json", "private_data")
 veris <- json2veris(data_dirs)
@@ -51,20 +55,20 @@ summary(vcdb)
 ```
 
 ```{r "basic-plot"}
+library(ggplot2)
 plot(vcdb)
 ```
 
-Let's look for a specific variable:
+Let's look for a specific variable by getting the data aggregated on a VERIS enumeration. In this case the variety of external actor.
 
 ```{r}
 ext.variety <- getenum(vcdb, "actor.external.variety")
 print(ext.variety)
 ```
 
-And we could create a barplot with ggplot:
+You can see this returns the enumeration (enum), the count of that enumeration (x), the sample size (n) of the enumeration class (external actor in this case) and the frequency (freq = x/n).  From that, you could create a barplot with ggplot:
 
 ```{r "basic-ggplot"} 
-library(ggplot2)
 gg <- ggplot(ext.variety, aes(x=enum, y=x))
 gg <- gg + geom_bar(stat="identity", fill="steelblue")
 gg <- gg + coord_flip() + theme_bw()
@@ -111,6 +115,7 @@ Most of the names to query are obvious from the schema.  Things like "actor.exte
 * *victim.industry2* will return the first 2 digits of the NAICS code
 * *victim.industry3* same, first 3 digits
 * *victim.orgsize* returns "Large" and "Small" enumerations
+* *pattern* returns the patterns (see DBIR 2014) each line is classified as
 
 If you come across any more that you'd like added, please reach out.
 
@@ -125,7 +130,6 @@ head(a2)
 And we can now just visualize that with ggplot in a nice 2x2 grid
 
 
-```{r echo=F}
 ```{r  "a2grid", echo=FALSE}
 slim.aa <- a2[which(a2$x>0), ]
 gg <- ggplot(a2, aes(x = enum, y = enum1, fill = x, label = x))
