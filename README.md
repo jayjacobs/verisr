@@ -45,7 +45,7 @@ class(vcdb)
 dim(vcdb)
 ```
 
-    ## [1] 4314 1695
+    ## [1] 4313 1695
 
 There are several convenience functions to get a feel for what's in the current verisr object.
 
@@ -53,22 +53,22 @@ There are several convenience functions to get a feel for what's in the current 
 summary(vcdb)
 ```
 
-    ## 4314 incidents in this object.
+    ## 4313 incidents in this object.
 
     ##       actor                action            asset     
-    ##  External:2301   Environmental:   7   Kiosk/Term: 100  
+    ##  External:2300   Environmental:   7   Kiosk/Term: 100  
     ##  Internal:1756   Error        :1176   Media     :1185  
-    ##  Partner : 184   Hacking      :1354   Network   : 126  
-    ##  Unknown : 150   Malware      : 352   Person    : 325  
+    ##  Partner : 184   Hacking      :1353   Network   : 126  
+    ##  Unknown : 150   Malware      : 353   Person    : 325  
     ##                  Misuse       : 747   Server    :1969  
-    ##                  Physical     : 813   Unknown   : 376  
+    ##                  Physical     : 813   Unknown   : 375  
     ##                  Social       : 303   User Dev  : 930  
     ##                  Unknown      : 167                    
     ##                                                        
     ##            attribute   
-    ##  Availability   :1385  
-    ##  Confidentiality:3902  
-    ##  Integrity      : 973  
+    ##  Availability   :1384  
+    ##  Confidentiality:3901  
+    ##  Integrity      : 974  
     ##                        
     ##                        
     ##                        
@@ -91,19 +91,19 @@ print(ext.variety)
 ```
 
     ##                 enum    x    n      freq
-    ##  1:     Acquaintance    2 2301 0.0008692
-    ##  2:        Terrorist    3 2301 0.0013038
-    ##  3:         Customer    6 2301 0.0026076
-    ##  4:       Competitor    8 2301 0.0034767
-    ##  5:    Force majeure   16 2301 0.0069535
-    ##  6:            Other   23 2301 0.0099957
-    ##  7:     Nation-state   25 2301 0.0108648
-    ##  8:  Former employee   28 2301 0.0121686
-    ##  9:  Organized crime  114 2301 0.0495437
-    ## 10:     Unaffiliated  160 2301 0.0695350
-    ## 11: State-affiliated  197 2301 0.0856150
-    ## 12:         Activist  393 2301 0.1707953
-    ## 13:          Unknown 1404 2301 0.6101695
+    ##  1:     Acquaintance    2 2300 0.0008696
+    ##  2:        Terrorist    3 2300 0.0013043
+    ##  3:         Customer    6 2300 0.0026087
+    ##  4:       Competitor    8 2300 0.0034783
+    ##  5:    Force majeure   16 2300 0.0069565
+    ##  6:            Other   23 2300 0.0100000
+    ##  7:     Nation-state   25 2300 0.0108696
+    ##  8:  Former employee   28 2300 0.0121739
+    ##  9:  Organized crime  114 2300 0.0495652
+    ## 10:     Unaffiliated  161 2300 0.0700000
+    ## 11: State-affiliated  197 2300 0.0856522
+    ## 12:         Activist  393 2300 0.1708696
+    ## 13:          Unknown 1402 2300 0.6095652
 
 You can see this returns the enumeration (enum), the count of that enumeration (x), the sample size (n) of the enumeration class (external actor in this case) and the frequency (freq = x/n). From that, you could create a barplot with ggplot:
 
@@ -144,7 +144,7 @@ Since these are just logical vectors now, we can use sum() to see how many match
 cat("Confirmed data loss events:", sum(ddfilter), "\n")
 ```
 
-    ## Confirmed data loss events: 2518
+    ## Confirmed data loss events: 2517
 
 ``` {.r}
 cat("Hacking vector of web apps:", sum(webfilter), "\n")
@@ -185,16 +185,16 @@ head(a2)
 ```
 
     ##        enum  enum1    x    n     freq
-    ## 1:  Malware Server  240 4314 0.055633
-    ## 2:  Hacking Server 1132 4314 0.262401
-    ## 3:   Social Server  225 4314 0.052156
-    ## 4: Physical Server   42 4314 0.009736
-    ## 5:   Misuse Server  457 4314 0.105934
-    ## 6:    Error Server  271 4314 0.062819
+    ## 1:  Malware Server  241 4313 0.055878
+    ## 2:  Hacking Server 1132 4313 0.262462
+    ## 3:   Social Server  225 4313 0.052168
+    ## 4: Physical Server   42 4313 0.009738
+    ## 5:   Misuse Server  457 4313 0.105959
+    ## 6:    Error Server  271 4313 0.062833
 
 And we can now just visualize that with ggplot in a nice 2x2 grid
 
 ![plot of chunk a2grid](./README_files/figure-markdown_github/a2grid.png)
 
     ##    user  system elapsed 
-    ##  25.316   0.326  26.291
+    ##  23.547   0.273  24.126
