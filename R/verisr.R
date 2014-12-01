@@ -488,10 +488,10 @@ getenum <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
   # extract by the enumeration
   # if field name exists as is, return it, else search.
   if(any(grepl(paste0('^', enum, "$"), cnames))) {
-    
+    # yes it exists
     if(is.logical(veris[[enum]])) {
       warning(paste0("single logical field requested: ", enum, ", skipping..."))  
-    } else {
+    } else { # not a logical field, assuming factor
       out.table <- table(veris[[enum]])
       outdf <- data.frame(enum=names(out.table), x=as.vector(out.table))
       if (add.n) outdf$n <- sum(!is.na(veris[[enum]]))
@@ -513,6 +513,11 @@ getenum <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
     } else {
       gkey <- paste0("^", enum, ".[^.]+$")
       thisn <- cnames[grep(gkey, cnames)]
+      colmodes <- sapply(thisn, function(x) is.logical(veris[[x]]) | is.numeric(veris[[x]]))
+      if(!all(colmodes)) {
+        warning(paste0("non-numeric/non-logical values requested: ", enum, ". Perhaps the enum is incorrect?"))
+        return(data.frame())
+      }
       ret <- setNames(colSums(veris[filter ,thisn, with=F]), getlast(thisn))
     }
     ret <- ret[ret>0]
