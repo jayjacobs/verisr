@@ -12,4 +12,7 @@ post.proc(veris)
 Given a veris object this will populate several convenience fields
 like the victim.industry2 and industry3,
 }
+\details{
+Change in 1.1.3: now adds dummar vars for each pattern as "pattern.*"
+}
 

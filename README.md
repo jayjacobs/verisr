@@ -45,7 +45,7 @@ class(vcdb)
 dim(vcdb)
 ```
 
-    ## [1] 4313 1695
+    ## [1] 4313 1705
 
 There are several convenience functions to get a feel for what's in the current verisr object.
 
@@ -92,18 +92,19 @@ print(ext.variety)
 
     ##                 enum    x    n      freq
     ##  1:     Acquaintance    2 2300 0.0008696
-    ##  2:        Terrorist    3 2300 0.0013043
-    ##  3:         Customer    6 2300 0.0026087
+    ##  2:         Activist  393 2300 0.1708696
+    ##  3:          Auditor    0 2300 0.0000000
     ##  4:       Competitor    8 2300 0.0034783
-    ##  5:    Force majeure   16 2300 0.0069565
-    ##  6:            Other   23 2300 0.0100000
-    ##  7:     Nation-state   25 2300 0.0108696
-    ##  8:  Former employee   28 2300 0.0121739
+    ##  5:         Customer    6 2300 0.0026087
+    ##  6:    Force majeure   16 2300 0.0069565
+    ##  7:  Former employee   28 2300 0.0121739
+    ##  8:     Nation-state   25 2300 0.0108696
     ##  9:  Organized crime  114 2300 0.0495652
-    ## 10:     Unaffiliated  161 2300 0.0700000
+    ## 10:            Other   23 2300 0.0100000
     ## 11: State-affiliated  197 2300 0.0856522
-    ## 12:         Activist  393 2300 0.1708696
-    ## 13:          Unknown 1402 2300 0.6095652
+    ## 12:        Terrorist    3 2300 0.0013043
+    ## 13:     Unaffiliated  161 2300 0.0700000
+    ## 14:          Unknown 1402 2300 0.6095652
 
 You can see this returns the enumeration (enum), the count of that enumeration (x), the sample size (n) of the enumeration class (external actor in this case) and the frequency (freq = x/n). From that, you could create a barplot with ggplot:
 
@@ -197,4 +198,4 @@ And we can now just visualize that with ggplot in a nice 2x2 grid
 ![plot of chunk a2grid](./README_files/figure-markdown_github/a2grid.png)
 
     ##    user  system elapsed 
-    ##  23.547   0.273  24.126
+    ##  26.999   0.987  29.720

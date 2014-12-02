@@ -1,7 +1,16 @@
-verision 2.0
+verision 2.0:
 
 * added sample data "veris.sample", this will allow quick exploration and samples to function
 * foldmatrix: several arguments were changed and removed, will require rework in existing code.
 * foldmatrix: enabled seperate variables of "rows" and "cols" to specify the rows and columns of output matrix 
 * foldmatrix: rows can be a named list of logical to be used as a filter, or a list of column names of logicals
 * foldmatrix: the "clean" variable is now defaulting to TRUE
+* getenumlist is removed, the new data.table format allows direct query of columns
+
+Version 2.0.1:
+
+* a few bug fixes, problems with json loading in json2veris() is fixed
+* getenum and getenumby() are now one function that are interchangable
+* internal `getpattern` function now returns a data table to cbind with core data set, it enables querying for "pattern" in getenum in an easier way.
+* getenum with more than one enum (what getenumby() did), now returns a different column name, since the columns are now bound by a "primary" qnd "secondary" limitation the columns are named "enum", "enum1", "enum2" and so on for each enum passed in.
+

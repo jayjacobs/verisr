@@ -110,6 +110,8 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
 #' Given a veris object this will populate several convenience fields
 #' like the victim.industry2 and industry3, 
 #' 
+#' Change in 1.1.3: now adds dummar vars for each pattern as "pattern.*"
+#' 
 #' @param veris the verisr object
 post.proc <- function(veris) {
   # orgsize
@@ -136,8 +138,7 @@ post.proc <- function(veris) {
                                                 use.names=F), 1L, 2L)]
   veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
                                                 use.names=F), 1L, 3L)]
-  veris[ , pattern := getpattern(veris)]
-  veris
+  cbind(veris, getpattern(veris))
 }
 
 #' Map VERIS fields to data type.
@@ -447,35 +448,34 @@ getnth <- function(nm, which=2) {
   })
 }
 
-#' Get a vector of values from an enumeration
+#' Get a data.frame of counts from an enumeration
 #'
-#' This will collect the values for an enumation 
+#' When exploring VERIS data, you may want to get a simple count of the values within a value or enumeration.  
+#' Given one or more enumerations, this will return the subsequent underlying logical values in an ordered data frame.
 #' 
-#' Note there are some special values that can be set as the enumeration
-#' that are not obvious. :
+#' Note there are some special values that can be set as the enumeration, 
+#' that may not be obvious. :
 #' * actor, action, attribute: will all return the next level down.  For example, just querying for "action" will return "malware", "hacking", and so on.
 #' * action.variety: will return the variety enumerations across all actions (e.g. top N actions) (not in getenumby() yet)
-#' * asset.assets: will return the type of assets, "Server", "Network, "User Dev" and so on
+#' * asset.variety: will return the type of assets, "Server", "Network, "User Dev" and so on
 #' * victim.industry2: will return a short label of industries based on 2 values of NAICS code.
 #' * victim.industry3: will return a short label of industries based on 3 values of NAICS code.
-#' * pattern: will return the pattern the row is in.
+#' * pattern: will return the pattern the incidents are in.
 #'
-#' Change: the "add.n" and "add.freq" options are now TRUE by default.
-#' Change: the "primary" and "secondary" arguments were dropped.
+#' Change in 1.1: the "add.n" and "add.freq" options are now TRUE by default.
 #' 
 #' @param veris a verisr object
 #' @param enum the field to count
 #' @param filter limit what records are searched (optional)
 #' @param add.n include a total count of variables found (denominator)
 #' @param add.freq include a percentage (x/n)
-#' @export
 #' @examples
 #' \dontrun{
 #' hacking <- getenum(veris, "action.hacking.variety")
 #' external <- getenum(veris, "actor.external.motive")
 #' }
-getenum <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
-  if (missing(filter)) {
+getenum.single <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
+  if (is.null(filter)) {
     filter <- rep(T, nrow(veris))
   } else if (length(filter) != nrow(veris)) {
     warning(paste0("filter is not same length (", length(filter),
@@ -538,14 +538,27 @@ getenum <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
   outdf
 }
 
-#' Get the sorted levels or return NULL if none exist for enum
-
-#' Get a count of enumerations values by some other enumeration
+#' Extract counts from one or more enumerations
 #'
-#' This will collect an enumation and count it.
-#'
-#' Change: the "add.n" and "add.freq" options are now TRUE by default.
+#' When exploring VERIS data, you may want to get a simple count of the values within a value or enumeration.  
+#' Given one or more enumerations, this will return the subsequent underlying logical values in an ordered data frame.  
+#' The data frame should be formatted for use in \code{ggplot2} graphics.
 #' 
+#' As of version 1.1: the \code{enum} variable may be a vector of one or more enumerations.  
+#' This enables any number of dimensions to be specified.  This makes the \code{primary} and \code{secondary}
+#' obsolete but are still supported for the time being.
+#' 
+#' Note there are some special values that can be set as the enumeration, 
+#' that may not be obvious. :
+#' * actor, action, attribute: will all return the next level down.  For example, just querying for "action" will return "malware", "hacking", and so on.
+#' * action.variety: will return the variety enumerations across all actions (e.g. top N actions) (not in getenumby() yet)
+#' * asset.variety: will return the type of assets, "Server", "Network, "User Dev" and so on
+#' * victim.industry2: will return a short label of industries based on 2 values of NAICS code.
+#' * victim.industry3: will return a short label of industries based on 3 values of NAICS code.
+#' * pattern: will return the pattern the incidents are in.
+#'
+#' Change in 1.1: the "add.n" and "add.freq" options are now TRUE by default.
+#' #' @aliases getenumby
 #' @param veris a verisr object
 #' @param enum the main enumeration field 
 #' @param primary the primary enumeration to filter on
@@ -558,11 +571,14 @@ getenum <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
 #' @import data.table
 #' @examples
 #' \dontrun{
-#' hacking <- getenumby(veris, "action", "asset.variety", fillzero=T)
+#' # old method:
+#' a2 <- getenum(veris, "action", primary="asset.variety")
+#' # new method:
+#' a4 <- getenum(veris, c("action", "asset.variety", "actor", "attribute"))
 #' }
-getenumby <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL, 
+getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL, 
                       add.n=T, add.freq=T, fillzero=T) {
-  if (missing(filter)) {
+    if (missing(filter)) {
     filter <- rep(T, nrow(veris))
   } else if (length(filter) != nrow(veris)) {
     warning(paste0("filter is not same length (", length(filter),
@@ -571,43 +587,78 @@ getenumby <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
   }
   cnames <- colnames(veris)
   enum <- c(enum, primary, secondary)
-  gkey <- paste0("^", enum, ".[^.]+$")
-  savethisn <- thisn <- lapply(gkey, function(x) cnames[grep(x, cnames)])
-  thisn$x <- 0
-  outdf <- as.data.table(expand.grid(thisn))
-  cnm <- colnames(outdf)[1:(ncol(outdf)-1)]
-  for(i in seq(nrow(outdf))) {
-    this.comp <- as.character(unlist(outdf[i, cnm, with = F]))
-    count <- sum(rowSums(veris[filter, this.comp, with=F]) == length(enum))
-    outdf[i, x:=count]
+  if(any(enum %in% c("asset.assets"))) {
+    # message("getenumby(): as of version 1.1, asset.assets should be replaced by asset.variety")
+    enum[which(enum %in% c("asset.assets"))] <- "asset.variety"
   }
-  for(column in cnm) {
-    tempcol <- getlast(as.character(unlist(outdf[ , column, with=F])))
-    outdf[ , column:=tempcol, with=F]
-  }
-  extra.names <- NULL
-  if (length(enum)>1) extra.names <- paste0('enum', seq((length(enum)-1)))
-  setnames(outdf, c('enum', extra.names, 'x'))
-  n <- sum(rowSums(veris[filter ,unlist(savethisn), with=F]) > 0)
-  if (n==0) return(data.frame())
-  if (!fillzero) {
-    outdf <- outdf[outdf$x>0,]
-  }
-  if (add.n) outdf$n <- n
-  if (add.freq) outdf$freq <- outdf$x/n
-  a4names <- names(geta4names())
-  for(i in seq_along(enum)) {
-    if (enum[i] %in% c('actor', 'action', 'asset.variety', 'attribute')) {
-      n.order <- getlast(a4names[grep(paste0('^', enum[i]), a4names)])
-      this.col <- colnames(outdf)[i]
-      outdf[[this.col]] <- factor(outdf[[this.col]], levels=rev(n.order), ordered=T)
-    }    
+  fullkey <- paste0('^', enum, "$")
+  fulln <- sapply(fullkey, function(x) any(grepl(x, cnames)))
+  if (length(enum)==1 & all(fulln)) {
+    if(is.logical(veris[[enum]])) {
+      warning(paste0("single logical field requested: ", enum, ", skipping..."))
+      return(data.frame())
+    } else { # not a logical field, assuming factor
+      out.table <- table(veris[[enum]])
+      outdf <- data.frame(enum=names(out.table), x=as.vector(out.table))
+      if (add.n) outdf$n <- sum(!is.na(veris[[enum]]))
+      if (add.freq) outdf$freq <- outdf$x/outdf$n
+      if (is.ordered(veris[[enum]])) {
+        outdf$enum <- factor(outdf$enum, levels=levels(veris[[enum]]), ordered=T)
+      } else {
+        outdf$enum <- factor(outdf$enum, levels=outdf$enum, ordered=T)
+      }
+    }
+  } else {
+    gkey <- paste0("^", enum, ".[^.]+$")
+    savethisn <- thisn <- lapply(gkey, function(x) cnames[grep(x, cnames)])
+    allfound <- sapply(thisn, function(x) length(x)>0)
+    if(!all(allfound)) {
+      warning(paste0("getenumby(): No columns matched \"", enum[!allfound], "\"", collapse="\", \""))
+      return(data.frame())
+    }
+    
+    thisn$x <- 0
+    outdf <- as.data.table(expand.grid(thisn))
+    cnm <- colnames(outdf)[1:(ncol(outdf)-1)]
+    for(i in seq(nrow(outdf))) {
+      this.comp <- as.character(unlist(outdf[i, cnm, with = F]))
+      count <- sum(rowSums(veris[filter, this.comp, with=F]) == length(enum))
+      outdf[i, x:=count]
+    }
+    for(column in cnm) {
+      tempcol <- getlast(as.character(unlist(outdf[ , column, with=F])))
+      outdf[ , column:=tempcol, with=F]
+    }
+    extra.names <- NULL
+    if (length(enum)>1) extra.names <- paste0('enum', seq((length(enum)-1)))
+    setnames(outdf, c('enum', extra.names, 'x'))
+    n <- sum(rowSums(veris[filter ,unlist(savethisn), with=F]) > 0)
+    if (n==0) return(data.frame())
+    if (!fillzero) {
+      outdf <- outdf[outdf$x>0,]
+    }
+    if (add.n) outdf$n <- n
+    if (add.freq) outdf$freq <- outdf$x/n
+    # how about we put some order to the chaos
+    a4names <- names(geta4names())
+    for(i in seq_along(enum)) {
+      if (enum[i] %in% c('actor', 'action', 'asset.variety', 'attribute')) {
+        n.order <- getlast(a4names[grep(paste0('^', enum[i]), a4names)])
+        this.col <- colnames(outdf)[i]
+        outdf[[this.col]] <- factor(outdf[[this.col]], levels=rev(n.order), ordered=T)
+      }    
+    }
   }
   # name the columns... enum enum1 enum2 (?)
   # print(outdf)
   #outdf <- outdf[order(-rank(x), enum)]
   #outdf$enum <- factor(outdf$enum, levels=outdf$enum, ordered=T)
   outdf
+}
+
+#' @export
+getenumby <- function(...) {
+  getenum(...)
 }
 
 #' Displays a useful description of a verisr object

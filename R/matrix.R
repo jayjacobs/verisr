@@ -119,5 +119,7 @@ getpattern <- function(veris) {
   retval <- apply(named.df, 1, function(x) {
     x[!is.na(x)][1]
   })
-  factor(retval, levels=patcols, ordered=T)  
+  colnames(pats) <- paste0("pattern.", patcols)
+  retval <- factor(retval, levels=patcols, ordered=T)  
+  cbind(data.table(pattern=retval), pats)
 }
