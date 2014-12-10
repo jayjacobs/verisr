@@ -125,7 +125,8 @@ post.proc <- function(veris) {
   # victim.industry
   ind2 <- substring(unlist(veris[ ,"victim.industry", with=F], use.names=F), 1L, 2L)
   # want an enumeration now, instead of a single list.
-  # veris[ , victim.industry2 := ind2]
+  # But Kevin wants both so he is uncommenting the line that Jay commented
+  veris[ , victim.industry2 := ind2]
   for(x in unique(ind2)) {
     iname <- paste0('victim.industry2.', x)
     veris[ ,iname:=(ind2==x), with=F]
@@ -133,6 +134,13 @@ post.proc <- function(veris) {
   ## industry3 may require more prep work since dashes are allowed.
   veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
                                                 use.names=F), 1L, 3L)]
+
+  # victim.industry.name
+  data(industry2, envir = environment())
+  veris$victim.industry.name <- sapply(veris$victim.industry2, function(x) {
+    ifelse(x %in% industry2$code, industry2$shorter[which(industry2$code==x)], "Unknown")
+  })
+  
   # actor.partner.industry
   veris[ , actor.partner.industry2 := substring(unlist(veris[ ,"actor.partner.industry", with=F], 
                                                 use.names=F), 1L, 2L)]
