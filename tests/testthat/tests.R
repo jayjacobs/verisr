@@ -10,12 +10,15 @@ test_that("a new verisr object has the correct classes", {
 
 test_that("a new verisr object has these columns", {
   # Note: not testing every column, just some key ones that have been added
+  # also should probably change this to a for loop or whatever R thinks
+  # you should use
   expect_equal(("victim.industry.name" %in% names(vr)), TRUE)
   expect_equal(("victim.industry2" %in% names(vr)), TRUE)
   expect_equal(("victim.orgsize.Small" %in% names(vr)), TRUE)
   expect_equal(("victim.orgsize.Large" %in% names(vr)), TRUE)
   expect_equal(("victim.industry3" %in% names(vr)), TRUE)
   expect_equal(("actor.partner.industry2" %in% names(vr)), TRUE)
+  expect_equal(("pattern" %in% names(vr)), TRUE)
 })
 
 test_that("a verisr object counts actors properly: getenum(\"actor\"", {
@@ -28,8 +31,7 @@ test_that("a verisr object counts actors properly: getenum(\"actor\"", {
   expect_equal(actors[actors$enum=="Unknown",]$x, 1)
 })
 
-test_that("post.proc() properly calculates which records are small and largevictims", {
-  # Manually count how many from our test set are Small and check
-  # that against sum(vr$victim.orgsize.Small)
-  # sum(vr$victim.orgsize.Large)
+test_that("post.proc() properly calculates which records are small and large victims", {
+  expect_equal(sum(vr$victim.orgsize.Small), 22)
+  expect_equal(sum(vr$victim.orgsize.Large), 41)
 })
