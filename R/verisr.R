@@ -2,15 +2,15 @@
 #'
 #' This function will iterate through all the JSON files (regex pattern of "json$") in
 #' the given directory and parse it as an encoded VERIS record.  This function
-#' requires that a JSON schema be available for the VERIS data.  If the variable is 
+#' requires that a JSON schema be available for the VERIS data.  If the variable is
 #' not specified, it will attempt to grab the "verisc-merged.json" schema from
 #' https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json.
-#' 
-#' This will return a verisr object, which is a data.table object and can be 
+#'
+#' This will return a verisr object, which is a data.table object and can be
 #' directly accesses as such.
-#' 
-#' Couple of unique things...  The returned object will have additional fields 
-#' for convenience: 
+#'
+#' Couple of unique things...  The returned object will have additional fields
+#' for convenience:
 #'   * *actor* will return top level actor categories
 #'   * *action* will return top level action categories
 #'   * *asset.variety* will return top level asset categories
@@ -18,14 +18,14 @@
 #'   * *victim.industry2* will return the first 2 digits of the NAICS code
 #'   * *victim.industry3* same, first 3 digits
 #'   * *victim.orgsize* returns "Large" and "Small" enumerations
-#' 
+#'
 #' The victim.secondary.victim_id, external.actor.region, and any other free
-#' text field that can be repeated is being collapsed into a single string 
+#' text field that can be repeated is being collapsed into a single string
 #' seperated by a comma at the moment.  If that poses a challnge, open an issue
 #' on it.
 #'
-#' @param dir the directory to list through.  This may be a vector of 
-#' directorites, in which case each all the matching files in each 
+#' @param dir the directory to list through.  This may be a vector of
+#' directorites, in which case each all the matching files in each
 #' directory will be laoded.
 #' @param schema a full veris schema with enumerations included.
 #' @param progressbar a logical value to show (or not show) a progress bar
@@ -39,22 +39,23 @@
 #' # load up all the veris files in the "vcdb" directory
 #' # grab the schema off of github.
 #' veris <- json2veris(dir="~/vcdb")
-#' 
+#'
 #' # load up files from multiple directories
 #' veris <- json2veris(dir=c("~/vcdb", "private_data))
-#' 
+#'
 #' # specify a local schema with localized plus section.
-#' veris <- json2veris(dir="~/vcdb", 
+#' veris <- json2veris(dir="~/vcdb",
 #'                     schema="~/veris/verisc-local.json")
 #' }
 json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   # if no schema, try to load it from github
   if (missing(schema)) {
-    x <- getURL("https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json")
+    x <- getURL("https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json",
+                capath=system.file("ca-bundle.crt", package="verisr"))
     lschema <- fromJSON(json_str=x)
   } else {
     lschema <- fromJSON(file=schema)
-  }  
+  }
   # create listing of files
   jfiles <- unlist(sapply(dir, list.files, pattern = "json$", full.names=T))
   numfil <- length(jfiles)
@@ -95,7 +96,7 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
         print(tt)
         cat("\n")
       }
-      
+
     }
     if (!is.null(pb)) setTxtProgressBar(pb, i)
   }
@@ -106,19 +107,19 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
 }
 
 #' Post process the veris object to add convenience fields.
-#' 
+#'
 #' Given a veris object this will populate several convenience fields
-#' like the victim.industry2 and industry3, 
-#' 
+#' like the victim.industry2 and industry3,
+#'
 #' Change in 1.1.3: now adds dummar vars for each pattern as "pattern.*"
-#' 
+#'
 #' @param veris the verisr object
 post.proc <- function(veris) {
   # orgsize
-  small <- c("victim.employee_count.1 to 10", "victim.employee_count.11 to 100", 
+  small <- c("victim.employee_count.1 to 10", "victim.employee_count.11 to 100",
              "victim.employee_count.101 to 1000", "victim.employee_count.Small")
-  large <- c("victim.employee_count.1001 to 10000", "victim.employee_count.10001 to 25000", 
-             "victim.employee_count.25001 to 50000", "victim.employee_count.50001 to 100000", 
+  large <- c("victim.employee_count.1001 to 10000", "victim.employee_count.10001 to 25000",
+             "victim.employee_count.25001 to 50000", "victim.employee_count.50001 to 100000",
              "victim.employee_count.Over 100000", "victim.employee_count.Large")
   veris[ , victim.orgsize.Small := rowSums(veris[ ,small, with=F]) > 0]
   veris[ , victim.orgsize.Large := rowSums(veris[ ,large, with=F]) > 0]
@@ -132,7 +133,7 @@ post.proc <- function(veris) {
     veris[ ,iname:=(ind2==x), with=F]
   }
   ## industry3 may require more prep work since dashes are allowed.
-  veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
+  veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F],
                                                 use.names=F), 1L, 3L)]
 
   # victim.industry.name
@@ -140,11 +141,11 @@ post.proc <- function(veris) {
   veris$victim.industry.name <- sapply(veris$victim.industry2, function(x) {
     ifelse(x %in% industry2$code, industry2$shorter[which(industry2$code==x)], "Unknown")
   })
-  
+
   # actor.partner.industry
-  veris[ , actor.partner.industry2 := substring(unlist(veris[ ,"actor.partner.industry", with=F], 
+  veris[ , actor.partner.industry2 := substring(unlist(veris[ ,"actor.partner.industry", with=F],
                                                 use.names=F), 1L, 2L)]
-  veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
+  veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F],
                                                 use.names=F), 1L, 3L)]
   cbind(veris, getpattern(veris))
 }
@@ -197,7 +198,7 @@ parseProps <- function(schema, cur="", outvec=NULL) {
 #' Create a list of all column names expected from JSON schema.
 #'
 #' Given a json schema for VERIS, this function will return a vector
-#' of columns names to be set in the verisr object.  This is a wrapper 
+#' of columns names to be set in the verisr object.  This is a wrapper
 #' around mkenums() which is a recursive function.  This will clean up
 #' some of the one-off things we do after reading the schema.
 #'
@@ -205,8 +206,8 @@ parseProps <- function(schema, cur="", outvec=NULL) {
 #' @keywords json
 veriscol <- function(schema) {
   rawfields <- mkenums(schema)
-  gfields <- c("^ioc", "^impact", 
-               "attribute.confidentiality.data.amount", 
+  gfields <- c("^ioc", "^impact",
+               "attribute.confidentiality.data.amount",
                "asset.assets.amount")
   clean <- rawfields[grep(paste(gfields, collapse="|"), rawfields, invert=T)]
   wonkyvariety <- clean[grep('asset.assets.variety|attribute.confidentiality.data.variety', clean)]
@@ -220,7 +221,7 @@ veriscol <- function(schema) {
 #' Create a raw list of all column names expected from JSON schema.
 #'
 #' Given a json schema for VERIS, this function will return a vector
-#' of columns names to be set in the verisr object. 
+#' of columns names to be set in the verisr object.
 #'
 #' @param schema the merged veris schema in json
 #' @param cur the current named value
@@ -252,9 +253,9 @@ mkenums <- function(schema, cur="", outvec=NULL) {
 
 #' Merges veriscol and parseProps in a single object.
 #'
-#' Given the schema object, will identify each column type to be 
+#' Given the schema object, will identify each column type to be
 #' created into a data.table.
-#' 
+#'
 #' TODO: need to add the convenience fields in here.
 #'
 #' @param lschema the json schema object for VERIS
@@ -280,12 +281,12 @@ getverisdf <- function(lschema, a4) {
 }
 
 #' Return a dense list of only the VERIS variables and values in the JSON.
-#' 
-#' Given an incident in json format, it will process the file and 
-#' return a simple list object where each element is named with 
+#'
+#' Given an incident in json format, it will process the file and
+#' return a simple list object where each element is named with
 #' the field name and the value is the value read in, or True if the
 #' field is an enumeration.
-#' 
+#'
 #' @param json the json object from reading in a file.
 #' @param vtype the vtype ojbect from parseProps()
 #' @param cur the current field name as it is being built
@@ -295,7 +296,7 @@ nameveris.recurs <- function(json, vtype, cur=NULL, outlist=list()) {
   #   named values (fields to loop through)
   #   looped variety object (asset.assets or data variety)
   #   a value itself
-  
+
   # if named values, loop through each of the children and recurse to myself
   if (length(names(json))>0) {
     for(x in names(json)) {
@@ -338,12 +339,12 @@ nameveris.recurs <- function(json, vtype, cur=NULL, outlist=list()) {
 }
 
 #' Return a dense and complete list of VERIS variables and values
-#' 
-#' Given an incident in json format, it will process the file and 
-#' return a simple list object where each element is named with 
+#'
+#' Given an incident in json format, it will process the file and
+#' return a simple list object where each element is named with
 #' the field name and the value is the value read in, or True if the
 #' field is an enumeration.
-#' 
+#'
 #' @param json the json object from reading in a file.
 #' @param a4 the a4 object from geta4names()
 #' @param vtype the vtype object from parseProps()
@@ -354,35 +355,35 @@ nameveris <- function(json, a4, vtype) {
     if (any(grepl(paste0('^', a4[a4name]), names(olist)))) {
       olist[[a4name]] = TRUE
     }
-  }  
+  }
   olist
 }
 
 #' Convenience function for the a4 names and values
-#' 
-#' This returns a named vector where the names are the column names 
+#'
+#' This returns a named vector where the names are the column names
 #' in the final verisr data table and the valus are suitable for using
-#' in a regex in the existing column names.  
+#' in a regex in the existing column names.
 geta4names <- function() {
   convenience <- function(nm) {
     out <- tolower(nm)
     setNames(tolower(nm), nm)
   }
-  actor <- convenience(paste('actor', 
-                             c('External', 'Internal', 'Partner', 'Unknown'), 
+  actor <- convenience(paste('actor',
+                             c('External', 'Internal', 'Partner', 'Unknown'),
                              sep="."))
-  action <- convenience(paste('action', 
-                              c('Malware', 'Hacking', 'Social', 'Physical', 
-                                'Misuse', 'Error', 'Environmental', 'Unknown'), 
+  action <- convenience(paste('action',
+                              c('Malware', 'Hacking', 'Social', 'Physical',
+                                'Misuse', 'Error', 'Environmental', 'Unknown'),
                               sep="."))
-  attribute <- convenience(paste('attribute', 
-                                 c('Confidentiality', 'Integrity', 'Availability'), 
+  attribute <- convenience(paste('attribute',
+                                 c('Confidentiality', 'Integrity', 'Availability'),
                                  sep="."))
-  assetmap <- c("S "="Server", "N "="Network", "U "="User Dev", "M "="Media", 
+  assetmap <- c("S "="Server", "N "="Network", "U "="User Dev", "M "="Media",
                 "P "="Person", "T "="Kiosk/Term", "Un"="Unknown")
   asset <- setNames(paste('asset.assets.variety', names(assetmap), sep='.'),
                     paste('asset.variety', assetmap, sep='.'))
-  c(actor, action, asset, attribute)  
+  c(actor, action, asset, attribute)
 }
 
 
@@ -394,7 +395,7 @@ counto <- function(olist) {
   for(x in found.enum) {
     olist[[x]] <- TRUE
   }
-  assetmap <- c("S "="Server", "N "="Network", "U "="User Dev", "M "="Media", 
+  assetmap <- c("S "="Server", "N "="Network", "U "="User Dev", "M "="Media",
                 "P "="Person", "T "="Kiosk/Term", "Un"="Unknown")
   outs <- cnm[grep('^asset.assets.variety', cnm)]
   if (length(outs) > 0) {
@@ -413,10 +414,10 @@ counto <- function(olist) {
 }
 
 #' Get the last element from a column name
-#' 
+#'
 #' Givn a vector with one or more column names (veris fields), this will
 #' return the last string in the name, as it is seperated by [.].
-#' 
+#'
 #' @param nm the vector of column names
 getlast <- function(nm) {
   sapply(nm, function(x) {
@@ -426,11 +427,11 @@ getlast <- function(nm) {
 }
 
 #' Get the last element from a column name, include action
-#' 
+#'
 #' Givn a vector with one or more column names (veris fields), this will
 #' return the last string in the name, as it is seperated by [.].  It will
 #' also assume this is the action and attempt to map nice names to the name.
-#' 
+#'
 #' @param nm the vector of column names
 getlastaction <- function(nm) {
   fixlabel <- c("malware"="[Mal]", "hacking"="[Hack]", "social"="[Soc]",
@@ -443,10 +444,10 @@ getlastaction <- function(nm) {
 }
 
 #' Get the nth element from a column name
-#' 
+#'
 #' Givn a vector with one or more column names (veris fields), this will
 #' return the nth string in the name, as it is seperated by [.].
-#' 
+#'
 #' @param nm the vector of column names
 #' @param which the nth vlue to return
 getnth <- function(nm, which=2) {
@@ -458,10 +459,10 @@ getnth <- function(nm, which=2) {
 
 #' Get a data.frame of counts from an enumeration
 #'
-#' When exploring VERIS data, you may want to get a simple count of the values within a value or enumeration.  
+#' When exploring VERIS data, you may want to get a simple count of the values within a value or enumeration.
 #' Given one or more enumerations, this will return the subsequent underlying logical values in an ordered data frame.
-#' 
-#' Note there are some special values that can be set as the enumeration, 
+#'
+#' Note there are some special values that can be set as the enumeration,
 #' that may not be obvious. :
 #' * actor, action, attribute: will all return the next level down.  For example, just querying for "action" will return "malware", "hacking", and so on.
 #' * action.variety: will return the variety enumerations across all actions (e.g. top N actions) (not in getenumby() yet)
@@ -471,7 +472,7 @@ getnth <- function(nm, which=2) {
 #' * pattern: will return the pattern the incidents are in.
 #'
 #' Change in 1.1: the "add.n" and "add.freq" options are now TRUE by default.
-#' 
+#'
 #' @param veris a verisr object
 #' @param enum the field to count
 #' @param filter limit what records are searched (optional)
@@ -490,7 +491,7 @@ getenum.single <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
                    ") as object (", nrow(veris), ")."))
     return(NULL)
   }
-  
+
   # get names from the veris object
   cnames <- colnames(veris)
   # extract by the enumeration
@@ -498,7 +499,7 @@ getenum.single <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
   if(any(grepl(paste0('^', enum, "$"), cnames))) {
     # yes it exists
     if(is.logical(veris[[enum]])) {
-      warning(paste0("single logical field requested: ", enum, ", skipping..."))  
+      warning(paste0("single logical field requested: ", enum, ", skipping..."))
     } else { # not a logical field, assuming factor
       out.table <- table(veris[[enum]])
       outdf <- data.frame(enum=names(out.table), x=as.vector(out.table))
@@ -511,7 +512,7 @@ getenum.single <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
       }
     }
   } else {
-    # only match where there are one level of enumerations 
+    # only match where there are one level of enumerations
     # after the requested enum
     if(enum=="action.variety") {
       gkey <- paste0("^action.*.variety")
@@ -548,15 +549,15 @@ getenum.single <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
 
 #' Extract counts from one or more enumerations
 #'
-#' When exploring VERIS data, you may want to get a simple count of the values within a value or enumeration.  
-#' Given one or more enumerations, this will return the subsequent underlying logical values in an ordered data frame.  
+#' When exploring VERIS data, you may want to get a simple count of the values within a value or enumeration.
+#' Given one or more enumerations, this will return the subsequent underlying logical values in an ordered data frame.
 #' The data frame should be formatted for use in \code{ggplot2} graphics.
-#' 
-#' As of version 1.1: the \code{enum} variable may be a vector of one or more enumerations.  
+#'
+#' As of version 1.1: the \code{enum} variable may be a vector of one or more enumerations.
 #' This enables any number of dimensions to be specified.  This makes the \code{primary} and \code{secondary}
 #' obsolete but are still supported for the time being.
-#' 
-#' Note there are some special values that can be set as the enumeration, 
+#'
+#' Note there are some special values that can be set as the enumeration,
 #' that may not be obvious. :
 #' * actor, action, attribute: will all return the next level down.  For example, just querying for "action" will return "malware", "hacking", and so on.
 #' * action.variety: will return the variety enumerations across all actions (e.g. top N actions) (not in getenumby() yet)
@@ -568,7 +569,7 @@ getenum.single <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
 #' Change in 1.1: the "add.n" and "add.freq" options are now TRUE by default.
 #' #' @aliases getenumby
 #' @param veris a verisr object
-#' @param enum the main enumeration field 
+#' @param enum the main enumeration field
 #' @param primary the primary enumeration to filter on
 #' @param secondary the (optional) secondary enumeration to filter on
 #' @param filter limit what records are searched (optional)
@@ -584,7 +585,7 @@ getenum.single <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
 #' # new method:
 #' a4 <- getenum(veris, c("action", "asset.variety", "actor", "attribute"))
 #' }
-getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL, 
+getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
                       add.n=T, add.freq=T, fillzero=T) {
     if (missing(filter)) {
     filter <- rep(T, nrow(veris))
@@ -624,7 +625,7 @@ getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
       warning(paste0("getenumby(): No columns matched \"", enum[!allfound], "\"", collapse="\", \""))
       return(data.frame())
     }
-    
+
     thisn$x <- 0
     outdf <- as.data.table(expand.grid(thisn))
     cnm <- colnames(outdf)[1:(ncol(outdf)-1)]
@@ -654,7 +655,7 @@ getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
         n.order <- getlast(a4names[grep(paste0('^', enum[i]), a4names)])
         this.col <- colnames(outdf)[i]
         outdf[[this.col]] <- factor(outdf[[this.col]], levels=rev(n.order), ordered=T)
-      }    
+      }
     }
   }
   # name the columns... enum enum1 enum2 (?)
@@ -670,7 +671,7 @@ getenumby <- function(...) {
 }
 
 #' Displays a useful description of a verisr object
-#' 
+#'
 #' @param object veris object to summarise
 #' @param ... other arguments ignored (for compatibility with generic)
 #' @keywords internal
@@ -702,7 +703,7 @@ summary.verisr <- function(object, ...) {
 }
 
 #' Displays a four panel barplot of a verisr object
-#' 
+#'
 #' @param object veris object to summarise
 #' @param ... other arguments ignored (for compatibility with generic)
 #' @keywords internal
@@ -723,7 +724,7 @@ plot.verisr <- function(x, y, ...) {
              attribute=attribute)
   ht_mult <- c(0.22)  # multiplier for each row
   highest <- (max(sapply(a4, nrow))*ht_mult)
-  
+
   plots <- lapply(names(a4), function(x) {
     this.ht <- (nrow(a4[[x]])*ht_mult)
     ht.diff <- (highest - this.ht) * 0.5
@@ -738,9 +739,9 @@ plot.verisr <- function(x, y, ...) {
 }
 
 #' Convenience function to pull the logical columns from verisr object
-#' 
+#'
 #' Given a verisr object this will return a vector of column names which are logical values.
-#' 
+#'
 #' @param veris the verisr object
 #' @export
 getlogical <- function(veris) {
@@ -751,7 +752,7 @@ getlogical <- function(veris) {
 
 #' Metadata for 2-digit NAICS industry classification
 #'
-#' This data allows a mapping between two digit NAICS code and the 
+#' This data allows a mapping between two digit NAICS code and the
 #' full definition provided by the NAICS specification and a shorter
 #' version of the title for compact visuals.
 #' @name industry2
@@ -762,7 +763,7 @@ NULL
 
 #' Metadata for 3-digit NAICS industry classification
 #'
-#' This data allows a mapping between three digit NAICS code and the 
+#' This data allows a mapping between three digit NAICS code and the
 #' full definition provided by the NAICS specification.
 #' @name industry3
 #' @docType data
@@ -775,14 +776,14 @@ NULL
 #'
 #' This is a collection of the 1000 most complete incidents within the VCDB database.
 #' See the example below on how the data was generated.
-#' 
+#'
 #' @name veris.sample
 #' @docType data
 #' @keywords data
 #' @examples
 #' \dontrun{
 #' # set vcdbdir and schema file
-#' 
+#'
 #' vcdb <- json2veris(vcdbdir, schemafile, progressbar = T)
 #' mycols <- getlogical(vcdb)
 #' testdata <- vcdb[order(-rowSums(vcdb[, mycols, with=F]))]

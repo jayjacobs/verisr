@@ -1,8 +1,8 @@
 Package: verisr
 Type: Package
 Title: Tools for working with VERIS objects
-Version: 2.0.1
-Date: 2014-12-1
+Version: 2.0.2
+Date: 2015-02-07
 Author: Jay Jacobs <jay@beechplane.com>
 Maintainer: Jay Jacobs <jay@beechplane.com>
 Description: Loads up VERIS JSON objects and offers convenience functions
@@ -10,6 +10,11 @@ License: GPL-2
 Depends:
     R (>= 3.0.0)
 Imports:
-    rjson,RCurl,data.table,ggplot2,gridExtra,grid
+    rjson,
+    RCurl,
+    data.table,
+    ggplot2,
+    gridExtra,
+    grid
 Suggests:
     testthat
