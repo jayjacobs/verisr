@@ -640,7 +640,7 @@ getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
     extra.names <- NULL
     if (length(enum)>1) extra.names <- paste0('enum', seq((length(enum)-1)))
     setnames(outdf, c('enum', extra.names, 'x'))
-    n <- sum(rowSums(veris[filter ,unlist(savethisn), with=F]) > 0)
+    n <- sum(rowSums(veris[filter ,unlist(savethisn), with=F]) > 0, na.rm=T)
     if (n==0) return(data.frame())
     if (!fillzero) {
       outdf <- outdf[outdf$x>0,]
