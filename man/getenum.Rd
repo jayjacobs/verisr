@@ -6,7 +6,7 @@
 \title{Extract counts from one or more enumerations}
 \usage{
 getenum(veris, enum, primary = NULL, secondary = NULL, filter = NULL,
-  add.n = T, add.freq = T, fillzero = T)
+  add.n = T, add.freq = T, fillzero = T, exclusive = F)
 }
 \arguments{
 \item{veris}{a verisr object}
@@ -24,6 +24,8 @@ getenum(veris, enum, primary = NULL, secondary = NULL, filter = NULL,
 \item{add.freq}{include a percentage (x/n)}
 
 \item{fillzero}{fill in missing matches with zeros}
+
+\item{exclusive}{logical value, If true, will count the unknown value only if it exclusive and it will not count the Unknown if it is selected with other attributes in the enumeration.}
 }
 \description{
 When exploring VERIS data, you may want to get a simple count of the values within a value or enumeration.

@@ -14,3 +14,11 @@ Version 2.0.1:
 * internal `getpattern` function now returns a data table to cbind with core data set, it enables querying for "pattern" in getenum in an easier way.
 * getenum with more than one enum (what getenumby() did), now returns a different column name, since the columns are now bound by a "primary" qnd "secondary" limitation the columns are named "enum", "enum1", "enum2" and so on for each enum passed in.
 
+Version 2.0.2:
+
+* minor bug fixes
+* Added in 'plota4' function in graphics.R to return ggplot2 object with a4 grid
+
+Version 2.0.3:
+
+* added in 'exclusive' parameter to getenum function.  This will enable a query where an identified Unknown column will return only if exclusive.  As an example, if action.hacking.variety is queried, one record has "SQLi" and "Unknown", and another record has just "Unknown", it will only count the latter (since "Unknown" in the former is not the only exclusive value set in the record).

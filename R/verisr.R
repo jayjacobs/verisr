@@ -575,6 +575,7 @@ getenum.single <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
 #' @param add.n include a total count of variables found (denominator)
 #' @param add.freq include a percentage (x/n)
 #' @param fillzero fill in missing matches with zeros
+#' @param exclusive logical value, If true, will count the unknown value only if it exclusive and it will not count the Unknown if it is selected with other attributes in the enumeration.
 #' @export
 #' @import data.table
 #' @examples
@@ -585,7 +586,7 @@ getenum.single <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
 #' a4 <- getenum(veris, c("action", "asset.variety", "actor", "attribute"))
 #' }
 getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL, 
-                      add.n=T, add.freq=T, fillzero=T) {
+                      add.n=T, add.freq=T, fillzero=T, exclusive=F) {
     if (missing(filter)) {
     filter <- rep(T, nrow(veris))
   } else if (length(filter) != nrow(veris)) {
@@ -595,6 +596,10 @@ getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
   }
   cnames <- colnames(veris)
   enum <- c(enum, primary, secondary)
+  if (length(enum)>1 & exclusive) {
+    warning("Cannot retrieve multiple enumerations and have exclusive set to TRUE, ignoring exclusive argument.")
+    exclusive <- FALSE
+  }
   if(any(enum %in% c("asset.assets"))) {
     # message("getenumby(): as of version 1.1, asset.assets should be replaced by asset.variety")
     enum[which(enum %in% c("asset.assets"))] <- "asset.variety"
@@ -628,9 +633,16 @@ getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
     thisn$x <- 0
     outdf <- as.data.table(expand.grid(thisn))
     cnm <- colnames(outdf)[1:(ncol(outdf)-1)]
+    # just look in first enum (exclusive) for unknowns
+    myunks <- unique(unlist(sapply(c("Unknown", " - Other"), function(p) grep(p, thisn[[1]])), use.names=F))
     for(i in seq(nrow(outdf))) {
       this.comp <- as.character(unlist(outdf[i, cnm, with = F]))
-      count <- sum(rowSums(veris[filter, this.comp, with=F]) == length(enum))
+      count <- rowSums(veris[filter, this.comp, with=F]) == length(enum)
+      if (exclusive && i %in% myunks) {
+        count <- sum(count & rowSums(veris[filter, thisn[[1]], with=F])==1)
+      } else {
+        count <- sum(count)
+      }
       outdf[i, x:=count]
     }
     for(column in cnm) {
