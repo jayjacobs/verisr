@@ -76,30 +76,31 @@ foldmatrix <- function(veris, cols=NULL, rows=NULL, min=1, clean=T) {
 #' # can summarize the results
 #' table(pat)
 getpattern <- function(veris) {
-  skimmer <- veris[['attribute.confidentiality.data.variety.Payment']] &
-    veris[['action.physical.variety.Tampering']]
+  skimmer <- veris[['action.physical.variety.Skimmer']] |
+    (veris[['action.physical.variety.Tampering']] & veris[['attribute.confidentiality.data.variety.Payment']])
   espionage <- (veris[['actor.external.motive.Espionage']] | 
-                  veris[['actor.external.variety.State-affiliated']]) & 
-    veris[['attribute.Confidentiality']]
+                  veris[['actor.external.variety.State-affiliated']])
+  
   pos <- (veris[['asset.assets.variety.S - POS controller']] |
-            veris[['asset.assets.variety.U - POS terminal']]) &
-    veris[['action.Hacking']]
+            veris[['asset.assets.variety.U - POS terminal']])
   dos <- veris[['action.hacking.variety.DoS']]
   webapp <- veris[['action.hacking.vector.Web application']]
   webapp <- webapp & !(webapp & dos)
   misuse <- veris[['action.Misuse']]
-  filter <- skimmer | espionage | pos | dos | webapp | misuse  
+  
+  vfilter <- skimmer | espionage | pos | dos | webapp | misuse  
   mal.tmp <- veris[['action.Malware']] & 
     !veris[['action.malware.vector.Direct install']]
-  malware <- (mal.tmp & !filter)
+  malware <- (mal.tmp & !vfilter)
   theftloss <- veris[['action.error.variety.Loss']] | 
     veris[['action.physical.variety.Theft']]
-  filter <- filter | malware | theftloss
-  errors <- veris[['action.Error']] & !filter
-  filter <- filter | errors
-  other <- !filter
+  vfilter <- vfilter | malware | theftloss
+  errors <- veris[['action.Error']] & !vfilter
+  vfilter <- vfilter | errors
+  other <- !vfilter
   pats <- data.frame(pos, webapp, misuse, theftloss, errors, malware,
                      skimmer, dos, espionage, other)
+  
   patcols  <- c("Point of Sale",
                 "Web Applications",
                 "Privilege Misuse",
