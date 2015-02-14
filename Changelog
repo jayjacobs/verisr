@@ -24,4 +24,7 @@ Version 2.0.3:
 * added in 'exclusive' parameter to getenum function.  This will enable a query where an identified Unknown column will return only if exclusive.  As an example, if action.hacking.variety is queried, one record has "SQLi" and "Unknown", and another record has just "Unknown", it will only count the latter (since "Unknown" in the former is not the only exclusive value set in the record).
 
 Version 2.0.4:
+* fixed bug in getenum that would error would non-factor column was empty
 * minor update to matrix.R and the pattern assignment
+* added proc.time() to json2veris (if progressbar==T)
+* 

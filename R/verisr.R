@@ -48,6 +48,7 @@
 #'                     schema="~/veris/verisc-local.json")
 #' }
 json2veris <- function(dir=".", schema=NULL, progressbar=F) {
+  savetime <- proc.time()
   # if no schema, try to load it from github
   if (missing(schema)) {
     x <- getURL("https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json")
@@ -102,6 +103,9 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   if (!is.null(pb)) close(pb)
   veris <- post.proc(veris)
   class(veris) <- c("verisr", class(veris))
+  if(progressbar) {
+    print(proc.time() - savetime)
+  }
   veris
 }
 
@@ -612,6 +616,9 @@ getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
       return(data.frame())
     } else { # not a logical field, assuming factor
       out.table <- table(veris[[enum]])
+      if(!length(out.table)) {
+        return(data.frame())
+      }
       outdf <- data.frame(enum=names(out.table), x=as.vector(out.table))
       if (add.n) outdf$n <- sum(!is.na(veris[[enum]]))
       if (add.freq) outdf$freq <- outdf$x/outdf$n
