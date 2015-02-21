@@ -641,7 +641,7 @@ getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
     outdf <- as.data.table(expand.grid(thisn))
     cnm <- colnames(outdf)[1:(ncol(outdf)-1)]
     # just look in first enum (exclusive) for unknowns
-    myunks <- unique(unlist(sapply(c("Unknown", " - Other"), function(p) grep(p, thisn[[1]])), use.names=F))
+    myunks <- unique(unlist(sapply(c("Unknown", " - Other", "unknown"), function(p) grep(p, thisn[[1]])), use.names=F))
     for(i in seq(nrow(outdf))) {
       this.comp <- as.character(unlist(outdf[i, cnm, with = F]))
       count <- rowSums(veris[filter, this.comp, with=F]) == length(enum)
@@ -659,7 +659,7 @@ getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
     extra.names <- NULL
     if (length(enum)>1) extra.names <- paste0('enum', seq((length(enum)-1)))
     setnames(outdf, c('enum', extra.names, 'x'))
-    n <- sum(rowSums(veris[filter ,unlist(savethisn), with=F]) > 0, na.rm=T)
+    n <- sum(rowSums(veris[filter ,unlist(savethisn), with=F], na.rm=T) > 0, na.rm=T)
     if (n==0) return(data.frame())
     if (!fillzero) {
       outdf <- outdf[outdf$x>0,]
