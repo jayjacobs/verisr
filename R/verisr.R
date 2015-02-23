@@ -81,6 +81,11 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
     json <- fromJSON(file=jfiles[i], method='C')
     nfield <- nameveris(json, a4, vtype)
     if (length(nfield)==0) warning(paste("empty json file parsed from", jfiles[i]))
+    nomatch <- !(names(nfield) %in% colnames(veris))
+    if (any(nomatch)) {
+      warning(paste0("Column[s]: \n", paste0("  \"", names(nfield)[nomatch], "\"", collpase=", "), 
+                     "\nNot found in schema, source file:", jfiles[i]))
+    }
     for(x in names(nfield)) {
       if(length(nfield[[x]]) > 1) {
         tt <- tryCatch(set(veris, i=as.integer(i), j=x, value=paste(nfield[[x]], collapse=",")),
@@ -150,7 +155,19 @@ post.proc <- function(veris) {
                                                 use.names=F), 1L, 2L)]
   veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
                                                 use.names=F), 1L, 3L)]
-  cbind(veris, getpattern(veris))
+  veris <- cbind(veris, getpattern(veris))
+  print("veris dimensions")
+  print(dim(veris))
+  fails <- sapply(colnames(veris), function(x) is.logical(veris[[x]]) & any(is.na(veris[[x]])))
+  print(which(fails))
+  if (any(fails)) {
+    for (i in which(fails)) {
+      set(veris, i=which(is.na(veris[[i]])), j=i, value=FALSE)
+    }
+  } 
+  fails <- sapply(colnames(veris), function(x) is.logical(veris[[x]]) & any(is.na(veris[[x]])))
+  print(which(fails))
+  veris
 }
 
 #' Map VERIS fields to data type.
@@ -209,7 +226,7 @@ parseProps <- function(schema, cur="", outvec=NULL) {
 #' @keywords json
 veriscol <- function(schema) {
   rawfields <- mkenums(schema)
-  gfields <- c("^ioc", "^impact", 
+  gfields <- c("^ioc", # "^impact",   # 2.0.6 change, putting impact back in
                "attribute.confidentiality.data.amount", 
                "asset.assets.amount")
   clean <- rawfields[grep(paste(gfields, collapse="|"), rawfields, invert=T)]

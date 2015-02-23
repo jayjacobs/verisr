@@ -32,3 +32,8 @@ Version 2.0.4:
 Verison 2.0.5:
 
 * Quick bug fix in getenum()
+
+Version 2.0.6:
+
+* json2veris would silently add columns not in the schema, it now produces a warning
+* postproc now replaces NA's in all logical columns with FALSE (related to above)
