@@ -34,4 +34,4 @@ $RECYCLE.BIN/
 .Rproj.user
 >>>>>>> b0e3616219735a95f64240a81c62881f41b8989a
 *.ipynb
-inst/doc
+# inst/doc
