@@ -1,15 +1,17 @@
 Package: verisr
 Type: Package
 Title: Tools for working with VERIS objects
-Version: 2.0.6
-Date: 2015-02-23
+Version: 2.0.7
+Date: 2015-04-09
 Author: Jay Jacobs <jay@beechplane.com>
 Maintainer: Jay Jacobs <jay@beechplane.com>
-Description: Loads up VERIS JSON objects and offers convenience functions
+Description: Loads up VERIS JSON objects and offers convenience functions to view and process the data.
 License: GPL-2
-Depends:
+Depends: 
     R (>= 3.0.0)
-Imports:
-    rjson,RCurl,data.table,ggplot2,gridExtra,grid
-Suggests:
-    testthat
+Imports: 
+    rjson,RCurl,data.table,ggplot2,gridExtra,grid,dplyr,binom,stringr,tidyr,scales
+Suggests: 
+    testthat,
+    knitr
+VignetteBuilder: knitr

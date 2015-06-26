@@ -1,10 +1,13 @@
+x <- enum <- enum3 <- label <- victim.orgsize.Small <- victim.orgsize.Large <- 
+  victim.industry2 <- victim.industry3 <- industry2 <- actor.partner.industry2 <- 
+  freq <- enum <- reallabel <- NULL
+
 #' Read in all the VERIS incidents (JSON files) in a given directory.
 #'
 #' This function will iterate through all the JSON files (regex pattern of "json$") in
 #' the given directory and parse it as an encoded VERIS record.  This function
 #' requires that a JSON schema be available for the VERIS data.  If the variable is 
 #' not specified, it will attempt to grab the "verisc-merged.json" schema from
-#' https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json.
 #' 
 #' This will return a verisr object, which is a data.table object and can be 
 #' directly accesses as such.
@@ -156,10 +159,7 @@ post.proc <- function(veris) {
   veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
                                                 use.names=F), 1L, 3L)]
   veris <- cbind(veris, getpattern(veris))
-  print("veris dimensions")
-  print(dim(veris))
   fails <- sapply(colnames(veris), function(x) is.logical(veris[[x]]) & any(is.na(veris[[x]])))
-  print(which(fails))
   if (any(fails)) {
     for (i in which(fails)) {
       set(veris, i=which(is.na(veris[[i]])), j=i, value=FALSE)

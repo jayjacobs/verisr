@@ -37,3 +37,14 @@ Version 2.0.6:
 
 * json2veris would silently add columns not in the schema, it now produces a warning
 * postproc now replaces NA's in all logical columns with FALSE (related to above)
+
+Version 2.0.7: 
+
+* Improve veris2csv to take existing veris object in 
+* removed some left over debug code 
+
+Version 2.1:
+
+* Added dependancy on dplyr, stringr and binom packages.
+* Many convenient functions added from 2015 DBIR season
+* Adding in a vignette that shows a typical report for VCDB data

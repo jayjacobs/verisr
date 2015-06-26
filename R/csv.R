@@ -4,14 +4,17 @@
 #' suitable for saving off as a CSV.  
 #' 
 #' @param dir one or more directories with json files.
+#' @param veris an optional veris object, if json already loaded.
 #' @export
-veris2csv <- function(dir=".") {
-  # create listing of files
-  jfiles <- unlist(sapply(dir, list.files, pattern = "json$", full.names=T))
-  # now read them all
-  veris <- lapply(jfiles, function(jfile) {
-    fromJSON(file=jfile, method='C')
-  })  
+veris2csv <- function(dir=".", veris=NULL) {
+  if (is.null(veris)) {
+    # create listing of files
+    jfiles <- unlist(sapply(dir, list.files, pattern = "json$", full.names=T))
+    # now read them all
+    veris <- lapply(jfiles, function(jfile) {
+      fromJSON(file=jfile, method='C')
+    })  
+  }
   vnames <- getvnames(veris)
   # setup venum with field names to represent as categories
   # the names must be passable to getenumlist
