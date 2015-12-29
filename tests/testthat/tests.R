@@ -35,3 +35,18 @@ test_that("post.proc() properly calculates which records are small and large vic
   expect_equal(sum(vr$victim.orgsize.Small), 22)
   expect_equal(sum(vr$victim.orgsize.Large), 41)
 })
+
+test_that("discovery_method is properly counted", {
+  disco <- getenum(vr, "discovery_method")
+  expect_equal(disco[disco$enum=="Unknown",]$x, 71)
+  expect_equal(disco[disco$enum=="Ext - actor disclosure",]$x, 7)
+  expect_equal(disco[disco$enum=="Ext - customer",]$x, 3)
+  expect_equal(disco[disco$enum=="Ext - found documents",]$x, 1)
+  expect_equal(disco[disco$enum=="Ext - fraud detection",]$x, 1)
+  expect_equal(disco[disco$enum=="Ext - law enforcement",]$x, 1)
+  expect_equal(disco[disco$enum=="Ext - suspicious traffic",]$x, 4)
+  expect_equal(disco[disco$enum=="Ext - unknown",]$x, 2)
+  expect_equal(disco[disco$enum=="Int - log review",]$x, 2)
+  expect_equal(disco[disco$enum=="Int - reported by employee",]$x, 7)
+  expect_equal(disco[disco$enum=="Int - unknown",]$x, 1)
+})
